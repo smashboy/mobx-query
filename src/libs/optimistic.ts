@@ -21,13 +21,16 @@ const collectionIdDecrementors = new Map<string, number>();
 
 export type EntityHydrated<T = unknown, S = unknown> = S & Entity<T>;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type EntityHydratedAny = EntityHydrated<any, any>;
+
 export class Entity<T = unknown> extends ViewModel<T> {
   entityId: string;
   @observable accessor state: EntityState = "confirmed";
 
   private queryClient: QueryClient;
   private collectionName: string;
-  private readonly queryHashes = new Set<string>();
+  readonly queryHashes = new Set<string>();
 
   constructor(
     entity: T,
@@ -137,7 +140,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
     this.entityHydrationCallback = options.hydrate;
 
     COLLECTIONS_REGISTRY.add(this.collectionName);
-    collectionIdDecrementors.set(this.collectionName, -1);
+    collectionIdDecrementors.set(this.collectionName, 0);
 
     this.initQueryClientCacheListener();
   }
@@ -211,23 +214,30 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
     Entity extends EntityHydrated<T, S> = EntityHydrated<T, S>
   >(entity: Entity, mutationFn: (entity: Entity) => Promise<void>) {
     const mutation = useMutation({
-      mutationFn: async () => mutationFn(entity),
-      onMutate: () => {
-        this.queryClient.cancelQueries({ queryKey: [this.collectionName] });
-        this.deletedRecords.add(entity.entityId);
-      },
-      onSuccess: () => {
-        this.deletedRecords.delete(entity.entityId);
-        this.collection.delete(entity.entityId);
-      },
-      onError: () => {
-        this.deletedRecords.delete(entity.entityId);
-      },
+      mutationFn: () => mutationFn(entity),
+      onMutate: () => this.onDeleteMutationMutate(entity),
+      onSuccess: () => this.onDeleteMutationSuccess(entity),
+      onError: () => this.onDeleteMutationError(entity),
     });
 
     const deleteEntity = () => mutation.mutate();
 
     return deleteEntity;
+  }
+
+  @action private onDeleteMutationMutate(entity: EntityHydratedAny) {
+    this.queryClient.cancelQueries({ queryKey: [this.collectionName] });
+    this.deletedRecords.add(entity.entityId);
+  }
+
+  @action private onDeleteMutationSuccess(entity: EntityHydratedAny) {
+    this.deletedRecords.delete(entity.entityId);
+    this.collection.delete(entity.entityId);
+    this.invalidateEntityRelatedQueries(entity);
+  }
+
+  @action private onDeleteMutationError(entity: EntityHydratedAny) {
+    this.deletedRecords.delete(entity.entityId);
   }
 
   private getEntityId(data: T) {
@@ -246,7 +256,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
     const entity = this.collection.get(id);
 
     if (clearQueryHashes) {
-      this.removeEntityQueryHash(queryHash);
+      this.removeQueryHashFromAllEntities(queryHash);
     }
 
     if (entity) {
@@ -275,7 +285,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
       throw new Error("Bad Array");
     }
 
-    this.removeEntityQueryHash(queryHash);
+    this.removeQueryHashFromAllEntities(queryHash);
 
     for (const entity of entities) {
       this.setEntity(entity, queryHash);
@@ -285,26 +295,53 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
   private initQueryClientCacheListener() {
     this.queryClient.getQueryCache().subscribe((event) => {
       if (event.type === "removed") {
-        this.removeEntityQueryHash(event.query.queryHash);
+        this.removeQueryHashFromAllEntities(event.query.queryHash);
       }
     });
   }
 
-  @action private removeEntityQueryHash(hash: string) {
-    for (const [id, entity] of this.collection.entries()) {
-      const isAllHashesRemoved = entity._removeQueryHash(hash);
+  private removeQueryHashFromAllEntities(hash: string) {
+    for (const entity of this.collection.values()) {
+      this.removeEntityQueryHash(hash, entity);
+    }
+  }
 
-      if (isAllHashesRemoved) {
-        this.collection.delete(id);
+  @action private removeEntityQueryHash(
+    hash: string,
+    entity: EntityHydratedAny
+  ) {
+    const isAllHashesRemoved = entity._removeQueryHash(hash);
+
+    if (isAllHashesRemoved) {
+      this.collection.delete(entity.entityId);
+    }
+  }
+
+  private invalidateEntityRelatedQueries(entity: EntityHydratedAny) {
+    const cache = this.queryClient.getQueryCache();
+
+    for (const hash of entity.queryHashes) {
+      const query = cache.get(hash);
+      if (query) {
+        query.invalidate();
+        if (query.isActive()) {
+          query.fetch();
+        }
+      } else {
+        this.removeEntityQueryHash(hash, entity);
       }
     }
   }
 
-  private decrementCollectionId(): number {
+  private invalidateCollectionRelatedQueries() {
+    this.queryClient.invalidateQueries({ queryKey: [this.collectionName] });
+  }
+
+  private createCollectionId(): string {
     let id = collectionIdDecrementors.get(this.collectionName)!;
     id--;
     collectionIdDecrementors.set(this.collectionName, id);
-    return id;
+    return `entityClientOnlyId_(${id})`;
   }
 
   private createQueryKey<A extends unknown[]>(fnName: string, ...args: A) {
