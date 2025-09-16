@@ -246,7 +246,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
     const entity = this.collection.get(id);
 
     if (clearQueryHashes) {
-      this.removeEntityHash(queryHash);
+      this.removeEntityQueryHash(queryHash);
     }
 
     if (entity) {
@@ -275,7 +275,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
       throw new Error("Bad Array");
     }
 
-    this.removeEntityHash(queryHash);
+    this.removeEntityQueryHash(queryHash);
 
     for (const entity of entities) {
       this.setEntity(entity, queryHash);
@@ -285,12 +285,12 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
   private initQueryClientCacheListener() {
     this.queryClient.getQueryCache().subscribe((event) => {
       if (event.type === "removed") {
-        this.removeEntityHash(event.query.queryHash);
+        this.removeEntityQueryHash(event.query.queryHash);
       }
     });
   }
 
-  @action private removeEntityHash(hash: string) {
+  @action private removeEntityQueryHash(hash: string) {
     for (const [id, entity] of this.collection.entries()) {
       const isAllHashesRemoved = entity._removeQueryHash(hash);
 
