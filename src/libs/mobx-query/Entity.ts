@@ -31,8 +31,8 @@ export class Entity<T = unknown> extends ViewModel<T> {
   entityId: string;
   @observable accessor state: EntityState = "confirmed";
 
-  private queryClient: QueryClient;
-  private collectionName: string;
+  private readonly queryClient: QueryClient;
+  private readonly collectionName: string;
   readonly queryHashes = new Set<string>();
 
   constructor(
