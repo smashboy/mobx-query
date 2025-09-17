@@ -39,7 +39,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
   constructor(
     collectionName: string,
     queryClient: QueryClient,
-    options: EntityCollectionProps<T>
+    options: EntityCollectionProps<T, S>
   ) {
     if (COLLECTIONS_REGISTRY.has(collectionName)) {
       throw new Error("Collection with this name already exists");
