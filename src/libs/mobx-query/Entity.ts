@@ -82,7 +82,6 @@ export class Entity<T = unknown> extends ViewModel<T> {
   }
 
   @action private onMutationSuccess() {
-    // this._update(data);
     this.invalidateEntityRelatedQueries();
     this.state = "confirmed";
   }
