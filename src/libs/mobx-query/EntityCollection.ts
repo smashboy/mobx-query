@@ -3,7 +3,8 @@ import { action, observable } from "mobx";
 import {
   Entity,
   type EntityHydrated,
-  type EntityHydratedAny,
+  type EntityHydratedInternal,
+  type EntityHydratedInternalAny,
   type EntityHydrationCallback,
   type GetEntityIdCallback,
 } from "./Entity";
@@ -27,7 +28,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
 
   @observable private accessor collection = new Map<
     string,
-    EntityHydrated<S, T>
+    EntityHydratedInternal<S, T>
   >();
   @observable private accessor deletedRecords = new Set<string>();
 
@@ -58,7 +59,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
   protected useSuspenseQueryEntity<A extends unknown[]>(
     query: (...args: A) => Promise<T>,
     ...args: A
-  ): EntityHydrated<S, T> {
+  ) {
     if (!query.name) {
       throw new Error("Bad Query Callback");
     }
@@ -74,7 +75,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
       },
     });
 
-    return this.collection.get(res.data)!;
+    return this.collection.get(res.data)! as EntityHydrated<T, S>;
   }
 
   protected useSuspenseQueryEntitiesList<A extends unknown[]>(
@@ -101,7 +102,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
       },
     });
 
-    const list: Array<EntityHydrated<S, T>> = [];
+    const list: Array<EntityHydratedInternal<S, T>> = [];
 
     for (const id of res.data) {
       if (this.deletedRecords.has(id)) {
@@ -115,14 +116,15 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
       }
     }
 
-    return list;
+    return list as EntityHydrated<T, S>[];
   }
 
   protected useCreateMutation() {}
 
-  protected useDeleteMutation<
-    Entity extends EntityHydrated<T, S> = EntityHydrated<T, S>
-  >(entity: Entity, mutationFn: (entity: Entity) => Promise<void>) {
+  protected useDeleteMutation(
+    entity: EntityHydrated<T, S>,
+    mutationFn: (entity: EntityHydrated<T, S>) => Promise<void>
+  ) {
     const mutation = useMutation({
       mutationFn: () => mutationFn(entity),
       onMutate: () => this.onDeleteMutationMutate(entity),
@@ -135,18 +137,18 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
     return deleteEntity;
   }
 
-  @action private onDeleteMutationMutate(entity: EntityHydratedAny) {
+  @action private onDeleteMutationMutate(entity: EntityHydratedInternalAny) {
     this.queryClient.cancelQueries({ queryKey: [this.collectionName] });
     this.deletedRecords.add(entity.entityId);
   }
 
-  @action private onDeleteMutationSuccess(entity: EntityHydratedAny) {
+  @action private onDeleteMutationSuccess(entity: EntityHydratedInternalAny) {
     this.deletedRecords.delete(entity.entityId);
     this.collection.delete(entity.entityId);
     this.invalidateEntityRelatedQueries(entity);
   }
 
-  @action private onDeleteMutationError(entity: EntityHydratedAny) {
+  @action private onDeleteMutationError(entity: EntityHydratedInternalAny) {
     this.deletedRecords.delete(entity.entityId);
   }
 
@@ -218,7 +220,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
 
   @action private removeEntityQueryHash(
     hash: string,
-    entity: EntityHydratedAny
+    entity: EntityHydratedInternalAny
   ) {
     const isAllHashesRemoved = entity._removeQueryHash(hash);
 
@@ -227,7 +229,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
     }
   }
 
-  private invalidateEntityRelatedQueries(entity: EntityHydratedAny) {
+  private invalidateEntityRelatedQueries(entity: EntityHydratedInternalAny) {
     const cache = this.queryClient.getQueryCache();
 
     for (const hash of entity.queryHashes) {

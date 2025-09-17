@@ -1,4 +1,4 @@
-import { observable } from "mobx";
+import { action, observable } from "mobx";
 import type { TodoDTO } from "../../api/types";
 import { queryClient } from "../../libs/react-query";
 import { deleteTodo, getTodosByUserId } from "../../api/todos";
@@ -16,6 +16,11 @@ export class Todo {
     this.userId = data.userId;
     this.title = data.title;
     this.isCompleted = data.completed;
+  }
+
+  @action
+  setTitle(title: string) {
+    this.title = title;
   }
 }
 

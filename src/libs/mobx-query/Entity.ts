@@ -12,9 +12,20 @@ export type EntityHydrationCallback<T = unknown, S = unknown> = (
   entity: T
 ) => S;
 
-export type EntityHydrated<T = unknown, S = unknown> = S & Entity<T>;
+export type EntityHydratedInternal<T = unknown, S = unknown> = S & Entity<T>;
+export type EntityHydrated<T = unknown, S = unknown> = Omit<
+  S & Entity<T>,
+  | "_newEntity"
+  | "queryHashes"
+  | "_removeQueryHash"
+  | "model"
+  | "localComputedValues"
+  | "localValues"
+>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type EntityHydratedAny = EntityHydrated<any, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type EntityHydratedInternalAny = EntityHydratedInternal<any, any>;
 
 export class Entity<T = unknown> extends ViewModel<T> {
   entityId: string;
@@ -40,40 +51,45 @@ export class Entity<T = unknown> extends ViewModel<T> {
     }
   }
 
-  useUpdateMutation(mutationFn: (draft: this) => Promise<T>) {
+  useUpdateMutation(mutationFn: (draft: this) => Promise<void>) {
     if (!mutationFn.name) {
       throw new Error("Bad Mutation Callback");
     }
 
     const mutation = useMutation({
       mutationFn: async () => mutationFn(this),
-      onMutate: () => {},
-      onSuccess: () => {},
-      onError: () => {},
+      onMutate: () => this.onMutationMutate(),
+      onSuccess: () => this.onMutationSuccess(),
+      onError: () => this.onMutationError(),
     });
 
-    const save = () => mutation.mutate();
+    const save = () => {
+      if (this.isDirty) {
+        mutation.mutate();
+      } else {
+        console.warn(
+          "Entity values has not been changed, mutation is skipped."
+        );
+      }
+    };
 
     return save;
   }
 
-  @action private onMutate() {
+  @action private onMutationMutate() {
     this.queryClient.cancelQueries({ queryKey: [this.collectionName] });
-
     this.state = "pending";
   }
 
-  @action private onSuccess() {
+  @action private onMutationSuccess() {
     // this._update(data);
+    this.invalidateEntityRelatedQueries();
+    this.state = "confirmed";
   }
 
-  @action private onError() {
+  @action private onMutationError() {
     this.state = "failed";
     this.reset();
-  }
-
-  @action _update() {
-    this.state = "confirmed";
   }
 
   _newEntity(entity: T, queryHashes: string[]) {
@@ -94,5 +110,21 @@ export class Entity<T = unknown> extends ViewModel<T> {
     this.queryHashes.delete(hash);
 
     return this.queryHashes.size === 0;
+  }
+
+  private invalidateEntityRelatedQueries() {
+    const cache = this.queryClient.getQueryCache();
+
+    for (const hash of this.queryHashes) {
+      const query = cache.get(hash);
+      if (query) {
+        query.invalidate();
+        if (query.isActive()) {
+          query.fetch();
+        }
+      } else {
+        this._removeQueryHash(hash);
+      }
+    }
   }
 }
