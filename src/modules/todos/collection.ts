@@ -1,8 +1,9 @@
 import { observable } from "mobx";
 import type { TodoDTO } from "../../api/types";
-import { EntityCollection, type EntityHydrated } from "../../libs/optimistic";
 import { queryClient } from "../../libs/react-query";
 import { deleteTodo, getTodosByUserId } from "../../api/todos";
+import { EntityCollection } from "../../libs/mobx-query/EntityCollection";
+import type { EntityHydrated } from "../../libs/mobx-query/Entity";
 
 export class Todo {
   id: number;
@@ -26,7 +27,7 @@ export class TodosCollection extends EntityCollection<TodoDTO, Todo> {
     });
   }
 
-  getByUserIdQuery(userId: number) {
+  useTodosByUserIdQuery(userId: number) {
     return this.useSuspenseQueryEntitiesList(getTodosByUserId, userId);
   }
 

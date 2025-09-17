@@ -4,7 +4,7 @@ import { usersCollection } from "../collection";
 
 export const UserProfile: React.FC<{ userId: number }> = ({ userId }) => {
   const user = usersCollection.useUserByIdQuery(userId);
-  const todos = todosCollection.getByUserIdQuery(userId);
+  const todos = todosCollection.useTodosByUserIdQuery(userId);
 
   const handleCloseProfile = () => usersCollection.selectUser(null);
 

@@ -1,8 +1,9 @@
 import { action, computed, observable } from "mobx";
 import type { UserDTO } from "../../api/types";
 import { deleteUser, getAllUsers, getUserById } from "../../api/users";
-import { EntityCollection, type EntityHydrated } from "../../libs/optimistic";
 import { queryClient } from "../../libs/react-query";
+import { EntityCollection } from "../../libs/mobx-query/EntityCollection";
+import type { EntityHydrated } from "../../libs/mobx-query/Entity";
 
 export class User {
   id: number;
