@@ -33,7 +33,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
   @observable private accessor deletedRecords = new Set<string>();
 
   private readonly getEntityIdCallback: GetEntityIdCallback<T>;
-  private readonly entityHydrationCallback: EntityHydrationCallback<T>;
+  private readonly entityHydrationCallback: EntityHydrationCallback<T, S>;
   private readonly queryClient: QueryClient;
 
   constructor(
