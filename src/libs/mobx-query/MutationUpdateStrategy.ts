@@ -10,12 +10,12 @@ export interface MutationUpdateStrategyOptions {
   onMutationErrorStrategy?: MutationErrorStrategy;
 }
 
-export type MutationErrorStrategyCallbacks<T> = Record<
+export type MutationErrorStrategyCallbacks = Record<
   MutationErrorStrategy,
-  (entity: T) => void
+  () => void
 >;
 
-export class MutationUpdateStrategy<T> {
+export class MutationUpdateStrategy {
   private readonly collectionOptions: Required<MutationUpdateStrategyOptions>;
   private readonly mutationOptions?: MutationUpdateStrategyOptions;
 
@@ -23,14 +23,14 @@ export class MutationUpdateStrategy<T> {
     Exclude<MutationInvalidationStrategy, "none">,
     () => void
   >;
-  private readonly onErrorCallbacks: MutationErrorStrategyCallbacks<T>;
+  private readonly onErrorCallbacks: MutationErrorStrategyCallbacks;
 
   constructor(
     invalidationCallbacks: Record<
       Exclude<MutationInvalidationStrategy, "none">,
       () => void
     >,
-    onErrorCallbacks: MutationErrorStrategyCallbacks<T>,
+    onErrorCallbacks: MutationErrorStrategyCallbacks,
     collectionOptions?: MutationUpdateStrategyOptions,
     mutationOptions?: MutationUpdateStrategyOptions
   ) {
@@ -74,14 +74,14 @@ export class MutationUpdateStrategy<T> {
     }
   }
 
-  onError(entity: T) {
+  onError() {
     const strategy = this.getMutationErrorStrategy();
     switch (strategy) {
       case "rollback":
-        this.onErrorCallbacks.rollback(entity);
+        this.onErrorCallbacks.rollback();
         break;
       case "keep":
-        this.onErrorCallbacks.keep(entity);
+        this.onErrorCallbacks.keep();
         break;
       default:
         break;

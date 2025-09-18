@@ -129,13 +129,14 @@ export abstract class EntityCollection<
     entity: EP,
     mutationFn: (entity: EP) => Promise<void>
   ) {
-    const mutationStrategy = new MutationUpdateStrategy<EP>(
+    const mutationStrategy = new MutationUpdateStrategy(
       {
         collection: () => this.invalidateCollectionRelatedQueries(),
-        "related-queries": () => this.invalidateEntityRelatedQueries(),
+        "related-queries": () =>
+          this.invalidateEntityRelatedQueries(entity as unknown as E),
       },
       {
-        rollback: (entity) => this.onDeleteMutationError(entity),
+        rollback: () => this.onDeleteMutationError(entity),
         keep: () => {},
       },
       this.options.strategyOptions
@@ -145,7 +146,7 @@ export abstract class EntityCollection<
       mutationFn: () => mutationFn(entity),
       onMutate: () => this.onDeleteMutationMutate(entity),
       onSuccess: () => this.onDeleteMutationSuccess(entity, mutationStrategy),
-      onError: () => mutationStrategy.onError(entity),
+      onError: () => mutationStrategy.onError(),
     });
 
     const deleteEntity = () => mutation.mutate();
@@ -160,7 +161,7 @@ export abstract class EntityCollection<
 
   private onDeleteMutationSuccess(
     entity: EP,
-    strategy: MutationUpdateStrategy<EP>
+    strategy: MutationUpdateStrategy
   ) {
     this.deleteEntity(entity.entityId);
     strategy.onInvalidate();
