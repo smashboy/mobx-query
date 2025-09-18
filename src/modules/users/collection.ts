@@ -6,7 +6,7 @@ import { EntityCollection } from "../../libs/mobx-query/EntityCollection";
 import type { EntityHydrated } from "../../libs/mobx-query/Entity";
 
 export class User {
-  @observable id: number;
+  id: number;
   @observable accessor name: string;
   @observable accessor username: string;
   @observable accessor email: string;
