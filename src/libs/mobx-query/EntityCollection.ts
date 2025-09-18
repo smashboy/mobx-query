@@ -4,7 +4,6 @@ import {
   Entity,
   type EntityHydrated,
   type EntityHydratedInternal,
-  type EntityHydratedInternalAny,
   type EntityHydrationCallback,
   type GetEntityIdCallback,
 } from "./Entity";
@@ -14,41 +13,46 @@ import {
   useSuspenseQuery,
   type QueryClient,
 } from "@tanstack/react-query";
+import {
+  MutationUpdateStrategy,
+  type MutationUpdateStrategyOptions,
+} from "./MutationUpdateStrategy";
 
 const collectionIdDecrementors = new Map<string, number>();
 const COLLECTIONS_REGISTRY = new Set<string>();
 
-export interface EntityCollectionProps<T = unknown, S = unknown> {
+export interface EntityCollectionOptions<T = unknown, S = unknown> {
   getEntityId: GetEntityIdCallback<T>;
   hydrate: EntityHydrationCallback<T, S>;
+  strategyOptions?: MutationUpdateStrategyOptions;
 }
 
-export abstract class EntityCollection<T = unknown, S = unknown> {
+export abstract class EntityCollection<
+  T = unknown,
+  S = unknown,
+  E extends EntityHydratedInternal<S> = EntityHydratedInternal<S>,
+  EP extends EntityHydrated<S> = EntityHydrated<S>
+> {
   private readonly collectionName: string;
 
-  @observable private accessor collection = new Map<
-    string,
-    EntityHydratedInternal<S, T>
-  >();
+  @observable private accessor collection = new Map<string, E>();
   @observable private accessor deletedRecords = new Set<string>();
 
-  private readonly getEntityIdCallback: GetEntityIdCallback<T>;
-  private readonly entityHydrationCallback: EntityHydrationCallback<T, S>;
+  private readonly options: EntityCollectionOptions<T, S>;
   private readonly queryClient: QueryClient;
 
   constructor(
     collectionName: string,
     queryClient: QueryClient,
-    options: EntityCollectionProps<T, S>
+    options: EntityCollectionOptions<T, S>
   ) {
     if (COLLECTIONS_REGISTRY.has(collectionName)) {
       throw new Error("Collection with this name already exists");
     }
 
     this.collectionName = collectionName;
-    this.getEntityIdCallback = options.getEntityId;
     this.queryClient = queryClient;
-    this.entityHydrationCallback = options.hydrate;
+    this.options = options;
 
     COLLECTIONS_REGISTRY.add(this.collectionName);
     collectionIdDecrementors.set(this.collectionName, 0);
@@ -75,7 +79,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
       },
     });
 
-    return this.collection.get(res.data)! as EntityHydrated<T, S>;
+    return this.collection.get(res.data)! as unknown as EP;
   }
 
   protected useSuspenseQueryEntitiesList<A extends unknown[]>(
@@ -102,7 +106,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
       },
     });
 
-    const list: Array<EntityHydratedInternal<S, T>> = [];
+    const list: Array<E> = [];
 
     for (const id of res.data) {
       if (this.deletedRecords.has(id)) {
@@ -116,20 +120,32 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
       }
     }
 
-    return list as EntityHydrated<T, S>[];
+    return list as unknown as EP[];
   }
 
   protected useCreateMutation() {}
 
   protected useDeleteMutation(
-    entity: EntityHydrated<T, S>,
-    mutationFn: (entity: EntityHydrated<T, S>) => Promise<void>
+    entity: EP,
+    mutationFn: (entity: EP) => Promise<void>
   ) {
+    const mutationStrategy = new MutationUpdateStrategy<EP>(
+      {
+        collection: () => this.invalidateCollectionRelatedQueries(),
+        "related-queries": () => this.invalidateEntityRelatedQueries(),
+      },
+      {
+        rollback: (entity) => this.onDeleteMutationError(entity),
+        keep: () => {},
+      },
+      this.options.strategyOptions
+    );
+
     const mutation = useMutation({
       mutationFn: () => mutationFn(entity),
       onMutate: () => this.onDeleteMutationMutate(entity),
-      onSuccess: () => this.onDeleteMutationSuccess(entity),
-      onError: () => this.onDeleteMutationError(entity),
+      onSuccess: () => this.onDeleteMutationSuccess(entity, mutationStrategy),
+      onError: () => mutationStrategy.onError(entity),
     });
 
     const deleteEntity = () => mutation.mutate();
@@ -137,22 +153,25 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
     return deleteEntity;
   }
 
-  @action private onDeleteMutationMutate(entity: EntityHydratedInternalAny) {
+  @action private onDeleteMutationMutate(entity: EP) {
     this.queryClient.cancelQueries({ queryKey: [this.collectionName] });
     this.deletedRecords.add(entity.entityId);
   }
 
-  private onDeleteMutationSuccess(entity: EntityHydratedInternalAny) {
-    this.deleteEntity(entity.id);
-    this.invalidateEntityRelatedQueries(entity);
+  private onDeleteMutationSuccess(
+    entity: EP,
+    strategy: MutationUpdateStrategy<EP>
+  ) {
+    this.deleteEntity(entity.entityId);
+    strategy.onInvalidate();
   }
 
-  @action private onDeleteMutationError(entity: EntityHydratedInternalAny) {
+  @action private onDeleteMutationError(entity: EP) {
     this.deletedRecords.delete(entity.entityId);
   }
 
   private getEntityId(data: T) {
-    const id = this.getEntityIdCallback(data);
+    const id = this.options.getEntityId(data);
 
     return typeof id === "number" ? id.toString() : id;
   }
@@ -172,7 +191,9 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
 
     if (entity) {
       const updatedEntity = entity._newEntity(
-        this.entityHydrationCallback(entityData),
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        this.options.hydrate(entityData),
         [queryHash]
       );
 
@@ -182,7 +203,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
 
     const newEntity = new Entity(
       id,
-      this.entityHydrationCallback(entityData),
+      this.options.hydrate(entityData),
       this.collectionName,
       this.queryClient,
       [queryHash],
@@ -226,7 +247,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
     }
   }
 
-  private invalidateEntityRelatedQueries(entity: EntityHydratedInternalAny) {
+  private invalidateEntityRelatedQueries(entity: E) {
     const cache = this.queryClient.getQueryCache();
 
     for (const hash of entity.queryHashes) {

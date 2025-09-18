@@ -41,6 +41,6 @@ export class TodosCollection extends EntityCollection<TodoDTO, Todo> {
   }
 }
 
-export type TodoHydrated = EntityHydrated<TodoDTO, Todo>;
+export type TodoHydrated = EntityHydrated<Todo>;
 
 export const todosCollection = new TodosCollection();

@@ -12,9 +12,9 @@ export type EntityHydrationCallback<T = unknown, S = unknown> = (
   entity: T
 ) => S;
 
-export type EntityHydratedInternal<T = unknown, S = unknown> = S & Entity<T>;
-export type EntityHydrated<T = unknown, S = unknown> = Omit<
-  S & Entity<T>,
+export type EntityHydratedInternal<T> = T & Entity<T>;
+export type EntityHydrated<T = unknown> = Omit<
+  EntityHydratedInternal<T>,
   | "_newEntity"
   | "queryHashes"
   | "_removeQueryHash"
@@ -23,9 +23,9 @@ export type EntityHydrated<T = unknown, S = unknown> = Omit<
   | "localValues"
 >;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type EntityHydratedAny = EntityHydrated<any, any>;
+export type EntityHydratedAny = EntityHydrated<any>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type EntityHydratedInternalAny = EntityHydratedInternal<any, any>;
+export type EntityHydratedInternalAny = EntityHydratedInternal<any>;
 
 export interface EntityEvents {
   onAllQueryHashesRemoved: (entityId: string) => void;
@@ -64,7 +64,7 @@ export class Entity<T = unknown> extends ViewModel<T> {
     }
 
     const mutation = useMutation({
-      mutationFn: async () => mutationFn(this),
+      mutationFn: () => mutationFn(this),
       onMutate: () => this.onMutationMutate(),
       onSuccess: () => this.onMutationSuccess(),
       onError: () => this.onMutationError(),
@@ -84,18 +84,18 @@ export class Entity<T = unknown> extends ViewModel<T> {
   }
 
   @action private onMutationMutate() {
-    this.queryClient.cancelQueries({ queryKey: [this.collectionName] });
     this.state = "pending";
+    this.queryClient.cancelQueries({ queryKey: [this.collectionName] });
   }
 
   @action private onMutationSuccess() {
-    this.invalidateEntityRelatedQueries();
     this.state = "confirmed";
+    this.invalidateEntityRelatedQueries();
   }
 
   @action private onMutationError() {
-    this.state = "failed";
     this.reset();
+    this.state = "failed";
   }
 
   _newEntity(data: T, queryHashes: string[]) {
