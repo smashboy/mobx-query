@@ -14,17 +14,17 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import {
-  MutationUpdateStrategy,
-  type MutationUpdateStrategyOptions,
-} from "./MutationUpdateStrategy";
+  OptimisticMutationStrategy,
+  type OptimisticMutationStrategyOptions,
+} from "./OptimisticMutationStrategy";
 
-const collectionIdDecrementors = new Map<string, number>();
+const COLLECTION_ID_DECREMENTORS = new Map<string, number>();
 const COLLECTIONS_REGISTRY = new Set<string>();
 
 export interface EntityCollectionOptions<T = unknown, S = unknown> {
   getEntityId: GetEntityIdCallback<T>;
   hydrate: EntityHydrationCallback<T, S>;
-  strategyOptions?: MutationUpdateStrategyOptions;
+  strategyOptions?: OptimisticMutationStrategyOptions;
 }
 
 export abstract class EntityCollection<
@@ -55,7 +55,7 @@ export abstract class EntityCollection<
     this.options = options;
 
     COLLECTIONS_REGISTRY.add(this.collectionName);
-    collectionIdDecrementors.set(this.collectionName, 0);
+    COLLECTION_ID_DECREMENTORS.set(this.collectionName, 0);
 
     this.initQueryClientCacheListener();
   }
@@ -129,24 +129,18 @@ export abstract class EntityCollection<
     entity: EP,
     mutationFn: (entity: EP) => Promise<void>
   ) {
-    const mutationStrategy = new MutationUpdateStrategy(
-      {
-        collection: () => this.invalidateCollectionRelatedQueries(),
-        "related-queries": () =>
-          this.invalidateEntityRelatedQueries(entity as unknown as E),
-      },
-      {
-        rollback: () => this.onDeleteMutationError(entity),
-        keep: () => {},
-      },
+    const mutationStrategy = new OptimisticMutationStrategy(
+      entity as unknown as E,
+      this.queryClient,
+      this.collectionName,
       this.options.strategyOptions
     );
 
     const mutation = useMutation({
       mutationFn: () => mutationFn(entity),
-      onMutate: () => this.onDeleteMutationMutate(entity),
+      onMutate: () => this.onDeleteMutationMutate(entity, mutationStrategy),
       onSuccess: () => this.onDeleteMutationSuccess(entity, mutationStrategy),
-      onError: () => mutationStrategy.onError(),
+      onError: () => this.onDeleteMutationError(entity, mutationStrategy),
     });
 
     const deleteEntity = () => mutation.mutate();
@@ -154,21 +148,28 @@ export abstract class EntityCollection<
     return deleteEntity;
   }
 
-  @action private onDeleteMutationMutate(entity: EP) {
-    this.queryClient.cancelQueries({ queryKey: [this.collectionName] });
+  @action private onDeleteMutationMutate(
+    entity: EP,
+    mutationStrategy: OptimisticMutationStrategy
+  ) {
+    mutationStrategy.onMutate();
     this.deletedRecords.add(entity.entityId);
   }
 
   private onDeleteMutationSuccess(
     entity: EP,
-    strategy: MutationUpdateStrategy
+    mutationStrategy: OptimisticMutationStrategy
   ) {
     this.deleteEntity(entity.entityId);
-    strategy.onInvalidate();
+    mutationStrategy.onSuccess();
   }
 
-  @action private onDeleteMutationError(entity: EP) {
+  @action private onDeleteMutationError(
+    entity: EP,
+    mutationStrategy: OptimisticMutationStrategy
+  ) {
     this.deletedRecords.delete(entity.entityId);
+    mutationStrategy.onError();
   }
 
   private getEntityId(data: T) {
@@ -248,30 +249,10 @@ export abstract class EntityCollection<
     }
   }
 
-  private invalidateEntityRelatedQueries(entity: E) {
-    const cache = this.queryClient.getQueryCache();
-
-    for (const hash of entity.queryHashes) {
-      const query = cache.get(hash);
-      if (query) {
-        query.invalidate();
-        if (query.isActive()) {
-          query.fetch();
-        }
-      } else {
-        entity._removeQueryHash(hash);
-      }
-    }
-  }
-
-  private invalidateCollectionRelatedQueries() {
-    this.queryClient.invalidateQueries({ queryKey: [this.collectionName] });
-  }
-
   private createCollectionId(): string {
-    let id = collectionIdDecrementors.get(this.collectionName)!;
+    let id = COLLECTION_ID_DECREMENTORS.get(this.collectionName)!;
     id--;
-    collectionIdDecrementors.set(this.collectionName, id);
+    COLLECTION_ID_DECREMENTORS.set(this.collectionName, id);
     return `entityClientOnlyId_(${id})`;
   }
 

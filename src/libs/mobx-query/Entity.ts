@@ -1,11 +1,11 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import { useMutation, type QueryClient } from "@tanstack/react-query";
-import { action, observable } from "mobx";
+import { observable } from "mobx";
 import { ViewModel } from "mobx-utils";
+import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
+import type { EntityId, EntityState } from "./types";
 
 export type EntityConstructor<T = unknown> = typeof Entity<T>;
-export type EntityState = "pending" | "confirmed" | "failed";
-export type EntityId = string | number;
 
 export type GetEntityIdCallback<T = unknown> = (entity: T) => EntityId;
 export type EntityHydrationCallback<T = unknown, S = unknown> = (
@@ -63,11 +63,17 @@ export class Entity<T = unknown> extends ViewModel<T> {
       throw new Error("Bad Mutation Callback");
     }
 
+    const mutationStrategy = new OptimisticMutationStrategy(
+      this,
+      this.queryClient,
+      this.collectionName
+    );
+
     const mutation = useMutation({
       mutationFn: () => mutationFn(this),
-      onMutate: () => this.onMutationMutate(),
-      onSuccess: () => this.onMutationSuccess(),
-      onError: () => this.onMutationError(),
+      onMutate: () => mutationStrategy.onMutate(),
+      onSuccess: () => mutationStrategy.onSuccess(),
+      onError: () => mutationStrategy.onError(),
     });
 
     const save = () => {
@@ -81,21 +87,6 @@ export class Entity<T = unknown> extends ViewModel<T> {
     };
 
     return save;
-  }
-
-  @action private onMutationMutate() {
-    this.state = "pending";
-    this.queryClient.cancelQueries({ queryKey: [this.collectionName] });
-  }
-
-  @action private onMutationSuccess() {
-    this.state = "confirmed";
-    this.invalidateEntityRelatedQueries();
-  }
-
-  @action private onMutationError() {
-    this.reset();
-    this.state = "failed";
   }
 
   _newEntity(data: T, queryHashes: string[]) {
@@ -118,22 +109,6 @@ export class Entity<T = unknown> extends ViewModel<T> {
 
     if (this.queryHashes.size === 0) {
       this.events.onAllQueryHashesRemoved(this.entityId);
-    }
-  }
-
-  private invalidateEntityRelatedQueries() {
-    const cache = this.queryClient.getQueryCache();
-
-    for (const hash of this.queryHashes) {
-      const query = cache.get(hash);
-      if (query) {
-        query.invalidate();
-        if (query.isActive()) {
-          query.fetch();
-        }
-      } else {
-        this._removeQueryHash(hash);
-      }
     }
   }
 }
