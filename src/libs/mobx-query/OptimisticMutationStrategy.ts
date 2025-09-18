@@ -48,20 +48,6 @@ export class OptimisticMutationStrategy {
     this.mutationOptions = mutationOptions;
   }
 
-  getInvalidationStrategy() {
-    return (
-      this.mutationOptions?.invalidationStrategy ??
-      this.collectionOptions.invalidationStrategy
-    );
-  }
-
-  getMutationErrorStrategy() {
-    return (
-      this.mutationOptions?.onMutationErrorStrategy ??
-      this.collectionOptions.onMutationErrorStrategy
-    );
-  }
-
   @action onMutate() {
     this.queryClient.cancelQueries({ queryKey: [this.collectionName] });
     this.entity.state = "pending";
@@ -89,6 +75,20 @@ export class OptimisticMutationStrategy {
     if (strategy === "rollback") {
       this.entity.reset();
     }
+  }
+
+  private getInvalidationStrategy() {
+    return (
+      this.mutationOptions?.invalidationStrategy ??
+      this.collectionOptions.invalidationStrategy
+    );
+  }
+
+  private getMutationErrorStrategy() {
+    return (
+      this.mutationOptions?.onMutationErrorStrategy ??
+      this.collectionOptions.onMutationErrorStrategy
+    );
   }
 
   private invalidateCollectionRelatedQueries() {
