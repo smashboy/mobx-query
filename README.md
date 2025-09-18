@@ -70,9 +70,8 @@ Mutate entity with automatic queries invalidation on mutation success and rollba
 ```ts
 const TodoListItem: React.FC<{ todo: TodoHydrated }> = ({ todo }) => {
   const deleteTodo = todosCollection.useDeleteTodoMutation(todo);
-  const update = todo.useUpdateMutation(entity => updateTodo(entity));
 
-  const handleDeleteTodo = () => deleteTodo();
+  const update = todo.useUpdateMutation(entity => updateTodo(entity));
 
   const handleEditTitle = () => {
     const value = prompt("Update title", todo.title);
@@ -89,7 +88,7 @@ const TodoListItem: React.FC<{ todo: TodoHydrated }> = ({ todo }) => {
       <button onClick={handleEditTitle}>
         Edit
       </button>
-      <button onClick={handleDeleteTodo}>
+      <button onClick={deleteTodo}>
         Delete
       </button>
     </div>
