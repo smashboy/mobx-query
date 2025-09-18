@@ -142,9 +142,8 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
     this.deletedRecords.add(entity.entityId);
   }
 
-  @action private onDeleteMutationSuccess(entity: EntityHydratedInternalAny) {
-    this.deletedRecords.delete(entity.entityId);
-    this.collection.delete(entity.entityId);
+  private onDeleteMutationSuccess(entity: EntityHydratedInternalAny) {
+    this.deleteEntity(entity.id);
     this.invalidateEntityRelatedQueries(entity);
   }
 
@@ -182,11 +181,15 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
     }
 
     const newEntity = new Entity(
-      this.entityHydrationCallback(entityData),
       id,
+      this.entityHydrationCallback(entityData),
       this.collectionName,
       this.queryClient,
-      [queryHash]
+      [queryHash],
+      {
+        onAllQueryHashesRemoved: (entityId: string) =>
+          this.deleteEntity(entityId),
+      }
     );
 
     this.collection.set(id, newEntity as never);
@@ -204,6 +207,11 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
     }
   }
 
+  @action private deleteEntity(entityId: string) {
+    this.collection.delete(entityId);
+    this.deletedRecords.delete(entityId);
+  }
+
   private initQueryClientCacheListener() {
     this.queryClient.getQueryCache().subscribe((event) => {
       if (event.type === "removed") {
@@ -214,18 +222,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
 
   private removeQueryHashFromAllEntities(hash: string) {
     for (const entity of this.collection.values()) {
-      this.removeEntityQueryHash(hash, entity);
-    }
-  }
-
-  @action private removeEntityQueryHash(
-    hash: string,
-    entity: EntityHydratedInternalAny
-  ) {
-    const isAllHashesRemoved = entity._removeQueryHash(hash);
-
-    if (isAllHashesRemoved) {
-      this.collection.delete(entity.entityId);
+      entity._removeQueryHash(hash);
     }
   }
 
@@ -240,7 +237,7 @@ export abstract class EntityCollection<T = unknown, S = unknown> {
           query.fetch();
         }
       } else {
-        this.removeEntityQueryHash(hash, entity);
+        entity._removeQueryHash(hash);
       }
     }
   }

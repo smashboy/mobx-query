@@ -27,25 +27,32 @@ export type EntityHydratedAny = EntityHydrated<any, any>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type EntityHydratedInternalAny = EntityHydratedInternal<any, any>;
 
+export interface EntityEvents {
+  onAllQueryHashesRemoved: (entityId: string) => void;
+}
+
 export class Entity<T = unknown> extends ViewModel<T> {
   entityId: string;
   @observable accessor state: EntityState = "confirmed";
 
   private readonly queryClient: QueryClient;
   private readonly collectionName: string;
+  private readonly events: EntityEvents;
   readonly queryHashes = new Set<string>();
 
   constructor(
-    entity: T,
     entityId: string,
+    entity: T,
     collectionName: string,
     queryClient: QueryClient,
-    queryHashes: string[]
+    queryHashes: string[],
+    events: EntityEvents
   ) {
     super(entity);
     this.entityId = entityId;
     this.collectionName = collectionName;
     this.queryClient = queryClient;
+    this.events = events;
     for (const hash of queryHashes) {
       this.queryHashes.add(hash);
     }
@@ -91,24 +98,27 @@ export class Entity<T = unknown> extends ViewModel<T> {
     this.reset();
   }
 
-  _newEntity(entity: T, queryHashes: string[]) {
+  _newEntity(data: T, queryHashes: string[]) {
     for (const hash of this.queryHashes) {
       queryHashes.push(hash);
     }
 
     return new Entity(
-      entity,
       this.entityId,
+      data,
       this.collectionName,
       this.queryClient,
-      queryHashes
+      queryHashes,
+      this.events
     );
   }
 
   _removeQueryHash(hash: string) {
     this.queryHashes.delete(hash);
 
-    return this.queryHashes.size === 0;
+    if (this.queryHashes.size === 0) {
+      this.events.onAllQueryHashesRemoved(this.entityId);
+    }
   }
 
   private invalidateEntityRelatedQueries() {
