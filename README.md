@@ -1,69 +1,97 @@
-# React + TypeScript + Vite
+# mobx-query
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Combine the best of react-query and mobx** — mobx-query provides a thin integration layer that uses React Query for fetching/invalidations and MobX for storing and mutating observable entities. It supports optimistic mutations with automatic rollbacks on error and automatic invalidation of dependent queries on success.
 
-Currently, two official plugins are available:
+# Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Normalize query responses into a single observable Map per collection.
+  
+- Hooks make it easy to work with data. Use [useSuspenseQueryEntitiesList](#sample-section) and [useSuspenseQueryEntity](#sample-section) to fetch and hydrate entities. For mutations, [useCreateMutation](#sample-section) and [useDeleteMutation](#sample-section) handle collection-level changes with optimistic updates and invalidations, while [useUpdateMutation](#sample-section) lets you update a single entity directly.
+  
+- Optimistic updates with automatic query invalidation on successful mutations and rollbacks on error.
+  
+- Fine-grained, mutable entities powered by MobX (observable fields & actions).
 
-## Expanding the ESLint configuration
+# Quick example
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Create the observable entity and wire it into a collection.
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+```ts
+// Your observable entity 
+class Todo {
+  id: number;
+  userId: number;
+  @observable accessor title: string;
+  @observable accessor isCompleted: boolean;
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+  constructor(data: TodoDTO) {
+    this.id = data.id;
+    this.userId = data.userId;
+    this.title = data.title;
+    this.isCompleted = data.completed;
+  }
+}
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+// Collection for a Todo entity
+class TodosCollection extends EntityCollection<TodoDTO, Todo> {
+  constructor() {
+    super("todos", queryClient, {
+      getEntityId: (todo) => todo.id,
+      hydrate: (todo) => new Todo(todo), // wrap data from queries into observable states
+    });
+  }
+
+  useTodosByUserIdQuery(userId: number) {
+    return this.useSuspenseQueryEntitiesList(getTodosByUserId, userId);
+  }
+
+  useDeleteTodoMutation(entity: TodoHydrated) {
+    return this.useDeleteMutation(entity, (entity) => deleteTodo(entity.id));
+  }
+}
+
+type TodoHydrated = EntityHydrated<Todo>;
+
+const todosCollection = new TodosCollection();
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Use hook from a collection to fetch and retrieve obserbable data
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```ts
+const TodosList: React.FC<{ userId: number }> = () => {
+  const todos = todosCollection.useTodosByUserIdQuery(userId);
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+   return <List items={todos} />;
+};
 ```
+
+Mutate entity with automatic queries invalidation on mutation success and rollback on error
+
+```ts
+const TodoListItem: React.FC<{ todo: TodoHydrated }> = ({ todo }) => {
+  const deleteTodo = todosCollection.useDeleteTodoMutation(todo);
+  const update = todo.useUpdateMutation(entity => updateTodo(entity));
+
+  const handleDeleteTodo = () => deleteTodo();
+
+  const handleEditTitle = () => {
+    const value = prompt("Update title", todo.title);
+
+    if (value) {
+      todo.title = value;
+      update();
+    }
+  };
+
+  return (
+    <div>
+      {todo.title}
+      <button onClick={handleEditTitle}>
+        Edit
+      </button>
+      <button onClick={handleDeleteTodo}>
+        Delete
+      </button>
+    </div>
+  );
+};
