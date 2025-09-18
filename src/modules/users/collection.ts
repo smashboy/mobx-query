@@ -6,7 +6,7 @@ import { EntityCollection } from "../../libs/mobx-query/EntityCollection";
 import type { EntityHydrated } from "../../libs/mobx-query/Entity";
 
 export class User {
-  id: number;
+  @observable id: number;
   @observable accessor name: string;
   @observable accessor username: string;
   @observable accessor email: string;
@@ -58,6 +58,6 @@ export class UsersCollection extends EntityCollection<UserDTO, User> {
   }
 }
 
-export type UserHydrated = EntityHydrated<UserDTO, User>;
+export type UserHydrated = EntityHydrated<User>;
 
 export const usersCollection = new UsersCollection();
