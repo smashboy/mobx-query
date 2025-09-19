@@ -5,6 +5,7 @@ import {
   useSuspenseQuery,
   type DefaultError,
   type QueryClient,
+  type UseSuspenseQueryOptions,
 } from "@tanstack/react-query";
 import type { CollectionManager } from "./CollectionManager";
 import type { EntityHydrated, EntityHydratedInternal } from "./Entity";
@@ -13,19 +14,41 @@ import { action } from "mobx";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
 import { CollectionIdGenerator } from "./CollectionIdGenerator";
 
-export interface UseSuspenseQueryHooksCommonOptions<A extends unknown[]> {
+export interface UseSuspenseQueryHooksCommonOptions<
+  A = unknown[],
+  TQueryFnData = unknown,
+  TError = DefaultError
+> extends Pick<
+    UseSuspenseQueryOptions<TQueryFnData, TError>,
+    | "gcTime"
+    | "staleTime"
+    | "meta"
+    | "networkMode"
+    | "retry"
+    | "retryOnMount"
+    | "retryDelay"
+    | "refetchInterval"
+    | "refetchIntervalInBackground"
+    | "refetchOnMount"
+    | "refetchOnReconnect"
+    | "refetchOnWindowFocus"
+  > {
   args: A;
 }
 
-export interface UseSuspenseEntityQueryHooksOptions<A extends unknown[], T>
-  extends UseSuspenseQueryHooksCommonOptions<A> {
+export interface UseSuspenseEntityQueryHooksOptions<
+  A extends unknown[],
+  T = unknown,
+  TError = DefaultError
+> extends UseSuspenseQueryHooksCommonOptions<A, T, TError> {
   queryFn: (...args: A) => Promise<T>;
 }
 
 export interface UseSuspenseEntitiesListQueryHooksOptions<
   A extends unknown[],
-  T
-> extends UseSuspenseQueryHooksCommonOptions<A> {
+  T = unknown,
+  TError = DefaultError
+> extends UseSuspenseQueryHooksCommonOptions<A, T, TError> {
   queryFn: (...args: A) => Promise<T[]>;
 }
 
@@ -51,43 +74,53 @@ export class CollectionHooksManager<
     this.collectionIdGenerator = new CollectionIdGenerator(this.collectionName);
   }
 
-  useSuspenseEntityQuery<A extends unknown[]>({
-    queryFn,
-    args,
-  }: UseSuspenseEntityQueryHooksOptions<A, T>) {
-    if (!queryFn.name) {
+  useSuspenseEntityQuery<A extends unknown[], TError = DefaultError>(
+    options: UseSuspenseEntityQueryHooksOptions<A, T, TError>
+  ) {
+    if (!options.queryFn.name) {
       throw new Error("Bad Query Callback");
     }
 
-    const queryKey = this.createQueryKey(queryFn.name, args);
+    const queryKey = this.createQueryKey(options.queryFn.name, options.args);
 
-    const res = useSuspenseQuery({
+    const res = useSuspenseQuery<string, TError>({
       queryKey,
       queryFn: async () => {
-        const data = await queryFn(...args);
+        const data = await options.queryFn(...options.args);
         this.collectionManger.setEntity(data, hashKey(queryKey), true);
         return this.collectionManger.getEntityId(data);
       },
+      gcTime: options.gcTime,
+      // staleTime: options.staleTime,
+      meta: options.meta,
+      networkMode: options.networkMode,
+      retry: options.retry,
+      retryOnMount: options.retryOnMount,
+      retryDelay: options.retryDelay,
+      // refetchInterval: options.refetchInterval,
+      // refetchOnMount: options.refetchOnMount,
+      // refetchOnReconnect: options.refetchOnReconnect,
+      // refetchOnWindowFocus: options.refetchOnWindowFocus
+      refetchIntervalInBackground: options.refetchIntervalInBackground,
     });
 
     return this.collectionManger.collection.get(res.data)! as unknown as EP;
   }
 
-  useSuspenseQueryEntitiesList<A extends unknown[]>({
-    queryFn,
-    args,
-  }: UseSuspenseEntitiesListQueryHooksOptions<A, T>) {
-    if (!queryFn.name) {
+  useSuspenseQueryEntitiesList<A extends unknown[]>(
+    options: UseSuspenseEntitiesListQueryHooksOptions<A, T>
+  ) {
+    if (!options.queryFn.name) {
       throw new Error("Bad Query Callback");
     }
 
-    const queryKey = this.createQueryKey(queryFn.name, args);
+    const queryKey = this.createQueryKey(options.queryFn.name, options.args);
 
     const res = useSuspenseQuery({
       queryKey,
       queryFn: async () => {
         try {
-          const data = await queryFn(...args);
+          const data = await options.queryFn(...options.args);
           this.collectionManger.setEntities(data, hashKey(queryKey));
           return data.map((item) => this.collectionManger.getEntityId(item));
         } catch (error) {
@@ -95,6 +128,18 @@ export class CollectionHooksManager<
           return [];
         }
       },
+      gcTime: options.gcTime,
+      // staleTime: options.staleTime,
+      meta: options.meta,
+      networkMode: options.networkMode,
+      retry: options.retry,
+      retryOnMount: options.retryOnMount,
+      retryDelay: options.retryDelay,
+      // refetchInterval: options.refetchInterval,
+      // refetchOnMount: options.refetchOnMount,
+      // refetchOnReconnect: options.refetchOnReconnect,
+      // refetchOnWindowFocus: options.refetchOnWindowFocus
+      refetchIntervalInBackground: options.refetchIntervalInBackground,
     });
 
     const list: Array<E> = [];
@@ -218,5 +263,9 @@ export class CollectionHooksManager<
 
   private createQueryKey<A extends unknown[]>(fnName: string, ...args: A) {
     return [this.collectionName, fnName, ...args.flat()];
+  }
+
+  private createQueryBaseKey(fnName: string) {
+    return [this.collectionName, fnName];
   }
 }
