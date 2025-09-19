@@ -36,13 +36,9 @@ export class UsersCollection extends EntityCollection<UserDTO, User> {
     });
   }
 
-  useAllUsersQuery() {
-    return this.useSuspenseQueryEntitiesList(getAllUsers);
-  }
+  readonly getAllUsers = this.createSuspenseEntityListQuery(getAllUsers);
 
-  useUserByIdQuery(userId: number) {
-    return this.useSuspenseQueryEntity(getUserById, userId);
-  }
+  readonly getUserById = this.createSuspenseEntityQuery(getUserById);
 
   useDeleteUserMutation(entity: UserHydrated) {
     return this.useDeleteMutation(entity, (entity) => deleteUser(entity.id));

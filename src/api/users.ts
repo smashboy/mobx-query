@@ -13,7 +13,7 @@ export function getUserById(userId: number) {
 export async function deleteUser(userId: number) {
   await wait(1500);
 
-  throw new Error("Oops");
+  // throw new Error("Oops");
 
   return apiFetch<void>(`/users/${userId}`, {
     method: "DELETE",

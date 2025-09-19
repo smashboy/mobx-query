@@ -32,9 +32,8 @@ export class TodosCollection extends EntityCollection<TodoDTO, Todo> {
     });
   }
 
-  useTodosByUserIdQuery(userId: number) {
-    return this.useSuspenseQueryEntitiesList(getTodosByUserId, userId);
-  }
+  readonly getTodosByUserId =
+    this.createSuspenseEntityListQuery(getTodosByUserId);
 
   useDeleteTodoMutation(entity: TodoHydrated) {
     return this.useDeleteMutation(entity, (entity) => deleteTodo(entity.id));
