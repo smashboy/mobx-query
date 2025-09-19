@@ -64,9 +64,9 @@ export class Entity<T = unknown> extends ViewModel<T> {
     }
 
     const mutationStrategy = new OptimisticMutationStrategy(
-      this,
       this.queryClient,
-      this.collectionName
+      this.collectionName,
+      this
     );
 
     const mutation = useMutation({

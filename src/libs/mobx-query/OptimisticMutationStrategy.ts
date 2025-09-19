@@ -22,16 +22,16 @@ export interface EntityLike {
 }
 
 export class OptimisticMutationStrategy {
-  private readonly entity: EntityLike;
+  private readonly entity?: EntityLike;
   private readonly queryClient: QueryClient;
   private readonly collectionName: string;
   private readonly collectionOptions: Required<OptimisticMutationStrategyOptions>;
   private readonly mutationOptions?: OptimisticMutationStrategyOptions;
 
   constructor(
-    entity: EntityLike,
     queryClient: QueryClient,
     collectionName: string,
+    entity?: EntityLike,
     collectionOptions?: OptimisticMutationStrategyOptions,
     mutationOptions?: OptimisticMutationStrategyOptions
   ) {
@@ -48,32 +48,35 @@ export class OptimisticMutationStrategy {
     this.mutationOptions = mutationOptions;
   }
 
-  @action onMutate() {
+  @action onMutate(entity?: EntityLike) {
     this.queryClient.cancelQueries({ queryKey: [this.collectionName] });
-    this.entity.state = "pending";
+    entity = (entity ?? this.entity)!;
+    entity.state = "pending";
   }
 
-  @action onSuccess() {
-    this.entity.state = "confirmed";
+  @action onSuccess(entity?: EntityLike) {
+    entity = (entity ?? this.entity)!;
+    entity.state = "confirmed";
     const strategy = this.getInvalidationStrategy();
     switch (strategy) {
       case "collection":
         this.invalidateCollectionRelatedQueries();
         break;
       case "related-queries":
-        this.invalidateEntityRelatedQueries();
+        this.invalidateEntityRelatedQueries(entity);
         break;
       default:
         break;
     }
   }
 
-  @action onError() {
-    this.entity.state = "failed";
+  @action onError(entity?: EntityLike) {
+    entity = (entity ?? this.entity)!;
+    entity.state = "failed";
     const strategy = this.getMutationErrorStrategy();
 
     if (strategy === "rollback") {
-      this.entity.reset();
+      entity.reset();
     }
   }
 
@@ -95,10 +98,11 @@ export class OptimisticMutationStrategy {
     this.queryClient.invalidateQueries({ queryKey: [this.collectionName] });
   }
 
-  private invalidateEntityRelatedQueries() {
+  private invalidateEntityRelatedQueries(entity?: EntityLike) {
     const cache = this.queryClient.getQueryCache();
+    entity = (entity ?? this.entity)!;
 
-    for (const hash of this.entity.queryHashes) {
+    for (const hash of entity.queryHashes) {
       const query = cache.get(hash);
       if (query) {
         query.invalidate();
@@ -106,7 +110,7 @@ export class OptimisticMutationStrategy {
           query.fetch();
         }
       } else {
-        this.entity._removeQueryHash(hash);
+        entity._removeQueryHash(hash);
       }
     }
   }

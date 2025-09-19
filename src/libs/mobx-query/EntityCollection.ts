@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/rules-of-hooks */
-import { action, observable } from "mobx";
+import { action, computed, observable } from "mobx";
 import {
   Entity,
   type EntityHydrated,
@@ -11,19 +11,28 @@ import {
   hashKey,
   useMutation,
   useSuspenseQuery,
+  type DefaultError,
   type QueryClient,
 } from "@tanstack/react-query";
 import {
   OptimisticMutationStrategy,
   type OptimisticMutationStrategyOptions,
 } from "./OptimisticMutationStrategy";
+import type { EntityId } from "./types";
 
 const COLLECTION_ID_DECREMENTORS = new Map<string, number>();
 const COLLECTIONS_REGISTRY = new Set<string>();
+const CLIENT_ONLY_ENTITY_ID_PREFIX = "entityClientOnlyId_";
+
+export type CreateEntityInputMapCallback<I, T> = (
+  input: I,
+  clientId: string
+) => T;
 
 export interface EntityCollectionOptions<T = unknown, S = unknown> {
   getEntityId: GetEntityIdCallback<T>;
   hydrate: EntityHydrationCallback<T, S>;
+  generateId?: () => EntityId;
   strategyOptions?: OptimisticMutationStrategyOptions;
 }
 
@@ -36,7 +45,8 @@ export abstract class EntityCollection<
   private readonly collectionName: string;
 
   @observable private accessor collection = new Map<string, E>();
-  @observable private accessor deletedRecords = new Set<string>();
+  @observable private accessor deletedRecordsIds = new Set<string>();
+  @observable private accessor clientOnlyEntitiesIds = new Set<string>();
 
   private readonly options: EntityCollectionOptions<T, S>;
   private readonly queryClient: QueryClient;
@@ -58,6 +68,23 @@ export abstract class EntityCollection<
     COLLECTION_ID_DECREMENTORS.set(this.collectionName, 0);
 
     this.initQueryClientCacheListener();
+  }
+
+  @computed
+  get clientOnlyEntities() {
+    const entities = new Map<string, EP>();
+
+    for (const entityId of this.clientOnlyEntitiesIds.values()) {
+      const entity = this.collection.get(entityId);
+
+      if (!entity) {
+        continue;
+      }
+
+      entities.set(entityId, entity as unknown as EP);
+    }
+
+    return entities;
   }
 
   protected useSuspenseQueryEntity<A extends unknown[]>(
@@ -109,7 +136,7 @@ export abstract class EntityCollection<
     const list: Array<E> = [];
 
     for (const id of res.data) {
-      if (this.deletedRecords.has(id)) {
+      if (this.deletedRecordsIds.has(id)) {
         continue;
       }
 
@@ -123,16 +150,71 @@ export abstract class EntityCollection<
     return list as unknown as EP[];
   }
 
-  protected useCreateMutation() {}
+  protected useCreateMutation<I>(
+    mutationFn: (input: I) => Promise<void>,
+    mapInput: CreateEntityInputMapCallback<I, T>
+  ) {
+    const mutationStrategy = new OptimisticMutationStrategy(
+      this.queryClient,
+      this.collectionName,
+      void 0,
+      this.options.strategyOptions
+    );
+
+    const mutation = useMutation<void, DefaultError, I, { entityId: string }>({
+      mutationFn: (input) => mutationFn(input),
+      onMutate: (input) => this.onCreateMutationMutate(input, mapInput),
+      onSuccess: (data, vars, ctx) =>
+        this.onCreateMutationSuccess(ctx.entityId),
+      onError: (err, vars, ctx) =>
+        this.onCreateMutationError(mutationStrategy, ctx?.entityId),
+    });
+
+    const create = (input: I) => mutation.mutate(input);
+
+    return create;
+  }
+
+  @action private onCreateMutationMutate<I>(
+    input: I,
+    mapInput: CreateEntityInputMapCallback<I, T>
+  ) {
+    const id = this.createCollectionEntityId();
+    const data = mapInput(input, id);
+    this.clientOnlyEntitiesIds.add(id);
+    this.setEntity(data, id);
+    return { entityId: id };
+  }
+
+  private onCreateMutationSuccess(entityId: string) {
+    this.deleteEntity(entityId);
+  }
+
+  private onCreateMutationError(
+    mutationStrategy: OptimisticMutationStrategy,
+    entityId?: string
+  ) {
+    if (!entityId) {
+      return;
+    }
+
+    const entity = this.collection.get(entityId);
+
+    if (!entity) {
+      return;
+    }
+
+    mutationStrategy.onError(entity);
+  }
 
   protected useDeleteMutation(
     entity: EP,
     mutationFn: (entity: EP) => Promise<void>
   ) {
     const mutationStrategy = new OptimisticMutationStrategy(
-      entity as unknown as E,
       this.queryClient,
       this.collectionName,
+      entity as unknown as E,
       this.options.strategyOptions
     );
 
@@ -153,7 +235,7 @@ export abstract class EntityCollection<
     mutationStrategy: OptimisticMutationStrategy
   ) {
     mutationStrategy.onMutate();
-    this.deletedRecords.add(entity.entityId);
+    this.deletedRecordsIds.add(entity.entityId);
   }
 
   private onDeleteMutationSuccess(
@@ -168,7 +250,7 @@ export abstract class EntityCollection<
     entity: EP,
     mutationStrategy: OptimisticMutationStrategy
   ) {
-    this.deletedRecords.delete(entity.entityId);
+    this.deletedRecordsIds.delete(entity.entityId);
     mutationStrategy.onError();
   }
 
@@ -232,7 +314,8 @@ export abstract class EntityCollection<
 
   @action private deleteEntity(entityId: string) {
     this.collection.delete(entityId);
-    this.deletedRecords.delete(entityId);
+    this.clientOnlyEntitiesIds.delete(entityId);
+    this.deletedRecordsIds.delete(entityId);
   }
 
   private initQueryClientCacheListener() {
@@ -249,11 +332,16 @@ export abstract class EntityCollection<
     }
   }
 
-  private createCollectionId(): string {
+  private createCollectionEntityId(): string {
+    if (this.options.generateId) {
+      const id = this.options.generateId();
+      return typeof id === "number" ? id.toString() : id;
+    }
+
     let id = COLLECTION_ID_DECREMENTORS.get(this.collectionName)!;
     id--;
     COLLECTION_ID_DECREMENTORS.set(this.collectionName, id);
-    return `entityClientOnlyId_(${id})`;
+    return `${CLIENT_ONLY_ENTITY_ID_PREFIX}(${id})`;
   }
 
   private createQueryKey<A extends unknown[]>(fnName: string, ...args: A) {
