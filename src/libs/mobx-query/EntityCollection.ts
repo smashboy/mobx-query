@@ -74,7 +74,7 @@ export abstract class EntityCollection<
       queryKey,
       queryFn: async () => {
         const data = await query(...args);
-        this.setEntity(data, hashKey(queryKey));
+        this.setEntity(data, hashKey(queryKey), true);
         return this.getEntityId(data);
       },
     });
@@ -180,16 +180,16 @@ export abstract class EntityCollection<
 
   @action private setEntity(
     entityData: T,
-    queryHash: string
-    // clearQueryHashes?: boolean
+    queryHash: string,
+    clearQueryHashes?: boolean
   ) {
     const id = this.getEntityId(entityData);
 
     const entity = this.collection.get(id);
 
-    // if (clearQueryHashes) {
-    //   this.removeQueryHashFromAllEntities(queryHash);
-    // }
+    if (clearQueryHashes) {
+      this.removeQueryHashFromAllEntities(queryHash);
+    }
 
     if (entity) {
       const updatedEntity = entity._newEntity(
@@ -223,7 +223,7 @@ export abstract class EntityCollection<
       throw new Error("Bad Array");
     }
 
-    // this.removeQueryHashFromAllEntities(queryHash);
+    this.removeQueryHashFromAllEntities(queryHash);
 
     for (const entity of entities) {
       this.setEntity(entity, queryHash);
