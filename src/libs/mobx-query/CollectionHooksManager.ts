@@ -104,6 +104,7 @@ export class CollectionHooksManager<
     const baseQueryKeyHash = hashKey(this.createQueryBaseKey(queryFn.name));
 
     return {
+      baseQueryKeyHash,
       useEntityQuery: (
         args: A,
         options?: UseSuspenseQueryHooksCommonOptions<string, TError>
@@ -135,7 +136,6 @@ export class CollectionHooksManager<
       },
       prefetch: (args?: A) => {},
       invalidate: (args?: A) => {},
-      baseQueryKeyHash,
     };
   }
 
@@ -149,6 +149,7 @@ export class CollectionHooksManager<
     const baseQueryKeyHash = hashKey(this.createQueryBaseKey(queryFn.name));
 
     return {
+      baseQueryKeyHash,
       useEntityListQuery: (args, options) => {
         const queryKey = this.createQueryKey(queryFn.name, args);
 
@@ -198,7 +199,6 @@ export class CollectionHooksManager<
       },
       prefetch: (args?: A) => {},
       invalidate: (args?: A) => {},
-      baseQueryKeyHash,
     };
   }
 
