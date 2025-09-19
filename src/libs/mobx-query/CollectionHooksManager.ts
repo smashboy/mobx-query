@@ -301,8 +301,8 @@ export class CollectionHooksManager<
     mutationStrategy.onError();
   }
 
-  private createQueryKey<A extends unknown[]>(fnName: string, ...args: A) {
-    return [this.collectionName, fnName, ...args.flat()];
+  private createQueryKey<A = unknown>(fnName: string, args: A) {
+    return [this.collectionName, fnName, args];
   }
 
   private createQueryBaseKey(fnName: string) {
