@@ -3,14 +3,9 @@ import { useMutation, type QueryClient } from "@tanstack/react-query";
 import { observable } from "mobx";
 import { ViewModel } from "mobx-utils";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
-import type { EntityId, EntityState } from "./types";
+import type { EntityState } from "./types";
 
 export type EntityConstructor<T = unknown> = typeof Entity<T>;
-
-export type GetEntityIdCallback<T = unknown> = (entity: T) => EntityId;
-export type EntityHydrationCallback<T = unknown, S = unknown> = (
-  entity: T
-) => S;
 
 export type EntityHydratedInternal<T> = T & Entity<T>;
 export type EntityHydrated<T = unknown> = Omit<
