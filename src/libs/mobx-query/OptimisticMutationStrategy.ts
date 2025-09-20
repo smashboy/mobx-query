@@ -36,15 +36,13 @@ export class OptimisticMutationStrategy {
     this.mutationOptions = mutationOptions;
   }
 
-  @action onMutate(entity?: EntityLike) {
+  @action onMutate() {
     this.queryClient.cancelQueries({ queryKey: [this.collectionName] });
-    entity = (entity ?? this.entity)!;
-    entity.state = "pending";
+    this.entity.state = "pending";
   }
 
-  @action onSuccess(entity?: EntityLike) {
-    entity = (entity ?? this.entity)!;
-    entity.state = "confirmed";
+  @action onSuccess() {
+    this.entity.state = "confirmed";
     const strategy = this.getInvalidationStrategy();
     switch (strategy) {
       case "collection":
