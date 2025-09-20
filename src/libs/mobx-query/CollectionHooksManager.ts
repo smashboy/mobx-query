@@ -254,6 +254,8 @@ export class CollectionHooksManager<
       this.collectionOptimisticMutationStrategyOptions
     );
 
+    mutationStrategy.onMutate();
+
     return { entityId: id, mutationStrategy };
   }
 
