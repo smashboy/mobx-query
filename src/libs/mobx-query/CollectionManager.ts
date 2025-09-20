@@ -13,7 +13,6 @@ export class CollectionManager<
   TData = unknown,
   THydrated = unknown,
   THydratedEntityInternal extends EntityHydratedInternal<THydrated> = EntityHydratedInternal<THydrated>
-  //   EP extends EntityHydrated<S> = EntityHydrated<S>
 > {
   @observable accessor collection = new Map<string, THydratedEntityInternal>();
   @observable accessor deletedRecordsIds = new Set<string>();
