@@ -76,6 +76,22 @@ export abstract class EntityCollection<
     return entities;
   }
 
+  @computed
+  get dirtyEntities() {
+    const entities = new Map<string, THydratedEntity>();
+
+    for (const [
+      entityId,
+      entity,
+    ] of this.collectionManager.collection.entries()) {
+      if (entity.isDirty) {
+        entities.set(entityId, entity as unknown as THydratedEntity);
+      }
+    }
+
+    return entities;
+  }
+
   createSuspenseEntityQuery<A = unknown, TError = DefaultError>(
     queryFn: UseEntityQueryFunction<A, TData>
   ) {
