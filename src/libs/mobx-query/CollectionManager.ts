@@ -1,7 +1,11 @@
 import { action, observable } from "mobx";
 import { Entity, type EntityHydratedInternal } from "./Entity";
 import type { QueryClient } from "@tanstack/react-query";
-import type { EntityHydrationCallback, GetEntityIdCallback } from "./types";
+import type {
+  EntityHydrationCallback,
+  GetEntityIdCallback,
+  OptimisticMutationStrategyOptions,
+} from "./types";
 
 const COLLECTIONS_REGISTRY = new Set<string>();
 
@@ -17,6 +21,8 @@ export class CollectionManager<
 
   private readonly collectionName: string;
   private readonly queryClient: QueryClient;
+  private readonly collectionOptimisticMutationStrategyOptions?: OptimisticMutationStrategyOptions;
+
   private readonly hydrateEntityCallback: EntityHydrationCallback<
     TData,
     THydrated
@@ -27,7 +33,8 @@ export class CollectionManager<
     collectionName: string,
     queryClient: QueryClient,
     hydrateEntityCallback: EntityHydrationCallback<TData, THydrated>,
-    getEntityIdCallback: GetEntityIdCallback<TData>
+    getEntityIdCallback: GetEntityIdCallback<TData>,
+    collectionOptimisticMutationStrategyOptions?: OptimisticMutationStrategyOptions
   ) {
     if (COLLECTIONS_REGISTRY.has(collectionName)) {
       throw new Error("Collection with this name already exists");
@@ -37,6 +44,8 @@ export class CollectionManager<
     this.queryClient = queryClient;
     this.hydrateEntityCallback = hydrateEntityCallback;
     this.getEntityIdCallback = getEntityIdCallback;
+    this.collectionOptimisticMutationStrategyOptions =
+      collectionOptimisticMutationStrategyOptions;
 
     COLLECTIONS_REGISTRY.add(this.collectionName);
 
@@ -81,7 +90,8 @@ export class CollectionManager<
       {
         onAllQueryHashesRemoved: (entityId: string) =>
           this.deleteEntity(entityId),
-      }
+      },
+      this.collectionOptimisticMutationStrategyOptions
     );
 
     this.collection.set(id, newEntity as never);

@@ -7,7 +7,11 @@ import {
 import { observable } from "mobx";
 import { ViewModel } from "mobx-utils";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
-import type { EntityState, UseUpdateMutationHookOptions } from "./types";
+import type {
+  EntityState,
+  OptimisticMutationStrategyOptions,
+  UseUpdateMutationHookOptions,
+} from "./types";
 
 export type EntityConstructor<THydrated = unknown> = typeof Entity<THydrated>;
 
@@ -37,6 +41,8 @@ export class Entity<THydrated = unknown> extends ViewModel<THydrated> {
   private readonly queryClient: QueryClient;
   private readonly collectionName: string;
   private readonly events: EntityEvents;
+  private readonly collectionOptimisticMutationStrategyOptions?: OptimisticMutationStrategyOptions;
+
   readonly queryHashes = new Set<string>();
 
   constructor(
@@ -45,13 +51,16 @@ export class Entity<THydrated = unknown> extends ViewModel<THydrated> {
     collectionName: string,
     queryClient: QueryClient,
     queryHashes: string[],
-    events: EntityEvents
+    events: EntityEvents,
+    collectionOptimisticMutationStrategyOptions?: OptimisticMutationStrategyOptions
   ) {
     super(entity);
     this.entityId = entityId;
     this.collectionName = collectionName;
     this.queryClient = queryClient;
     this.events = events;
+    this.collectionOptimisticMutationStrategyOptions =
+      collectionOptimisticMutationStrategyOptions;
     for (const hash of queryHashes) {
       this.queryHashes.add(hash);
     }
@@ -69,7 +78,7 @@ export class Entity<THydrated = unknown> extends ViewModel<THydrated> {
       this,
       this.queryClient,
       this.collectionName,
-      void 0,
+      this.collectionOptimisticMutationStrategyOptions,
       {
         invalidationStrategy: options?.invalidationStrategy,
         onMutationErrorStrategy: options?.onMutationErrorStrategy,
@@ -114,7 +123,8 @@ export class Entity<THydrated = unknown> extends ViewModel<THydrated> {
       this.collectionName,
       this.queryClient,
       queryHashes,
-      this.events
+      this.events,
+      this.collectionOptimisticMutationStrategyOptions
     );
   }
 

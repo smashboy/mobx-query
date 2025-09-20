@@ -15,6 +15,7 @@ import type {
   UseSuspenseQueryHookCommonOptions,
   GenerateEntityIdCallback,
   UseDeleteMutationHookOptions,
+  OptimisticMutationStrategyOptions,
 } from "./types";
 import { action } from "mobx";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
@@ -66,6 +67,7 @@ export class CollectionHooksManager<
     THydratedEntityInternal
   >;
   private readonly collectionIdGenerator: CollectionIdGenerator;
+  private readonly collectionOptimisticMutationStrategyOptions?: OptimisticMutationStrategyOptions;
 
   constructor(
     collectionName: string,
@@ -75,11 +77,14 @@ export class CollectionHooksManager<
       THydrated,
       THydratedEntityInternal
     >,
-    generateId?: GenerateEntityIdCallback
+    generateId?: GenerateEntityIdCallback,
+    collectionOptimisticMutationStrategyOptions?: OptimisticMutationStrategyOptions
   ) {
     this.collectionName = collectionName;
     this.queryClient = queryClient;
     this.collectionManger = collectionManger;
+    this.collectionOptimisticMutationStrategyOptions =
+      collectionOptimisticMutationStrategyOptions;
     this.collectionIdGenerator = new CollectionIdGenerator(
       this.collectionName,
       generateId
@@ -245,7 +250,8 @@ export class CollectionHooksManager<
     const mutationStrategy = new OptimisticMutationStrategy(
       entity,
       this.queryClient,
-      this.collectionName
+      this.collectionName,
+      this.collectionOptimisticMutationStrategyOptions
     );
 
     return { entityId: id, mutationStrategy };
@@ -268,7 +274,7 @@ export class CollectionHooksManager<
       entity as unknown as THydratedEntityInternal,
       this.queryClient,
       this.collectionName,
-      void 0,
+      this.collectionOptimisticMutationStrategyOptions,
       {
         invalidationStrategy: options?.invalidationStrategy,
         onMutationErrorStrategy: options?.onMutationErrorStrategy,

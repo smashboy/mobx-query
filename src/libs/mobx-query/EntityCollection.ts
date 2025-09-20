@@ -54,7 +54,8 @@ export abstract class EntityCollection<
       collectionName,
       queryClient,
       this.collectionManager,
-      options.generateId
+      options.generateId,
+      options.strategyOptions
     );
   }
 
