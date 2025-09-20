@@ -15,21 +15,22 @@ export type OptimisticMutationInvalidationStrategy =
 export type OptimisticMutationErrorStrategy = "rollback" | "keep";
 
 export type GenerateEntityIdCallback = () => EntityId;
-export type GetEntityIdCallback<T = unknown> = (entity: T) => EntityId;
-export type EntityHydrationCallback<T = unknown, S = unknown> = (
-  entity: T
-) => S;
-export type CreateEntityInputMapCallback<I, T> = (
-  input: I,
+export type GetEntityIdCallback<TData = unknown> = (data: TData) => EntityId;
+export type EntityHydrationCallback<TData = unknown, THydrated = unknown> = (
+  data: TData
+) => THydrated;
+export type CreateEntityInputMapCallback<TInput, TData> = (
+  input: TInput,
   clientId: string
-) => T;
+) => TData;
 
-export type UseEntityQueryFunction<A = unknown, T = unknown> = (
-  args: A
-) => T | Promise<T>;
-export type UseEntityListQueryFunction<A = unknown, T = unknown> = (
-  args: A
-) => T[] | Promise<T[]>;
+export type UseEntityQueryFunction<TArguments = unknown, TData = unknown> = (
+  args: TArguments
+) => TData | Promise<TData>;
+export type UseEntityListQueryFunction<
+  TArguments = unknown,
+  TData = unknown
+> = (args: TArguments) => TData[] | Promise<TData[]>;
 
 export interface OptimisticMutationStrategyOptions {
   invalidationStrategy?: OptimisticMutationInvalidationStrategy;

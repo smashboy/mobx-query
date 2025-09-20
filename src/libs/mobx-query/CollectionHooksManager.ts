@@ -20,69 +20,61 @@ import { action } from "mobx";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
 import { CollectionIdGenerator } from "./CollectionIdGenerator";
 
-// export interface UseSuspenseEntityQueryHooksOptions<
-//   A extends unknown[],
-//   T = unknown,
-//   TError = DefaultError
-// > extends UseSuspenseQueryHooksCommonOptions<T, TError> {
-//   queryFn: (...args: A) => Promise<T>;
-// }
-
-// export interface UseSuspenseEntityListQueryHooksOptions<
-//   A extends unknown[],
-//   T = unknown,
-//   TError = DefaultError
-// > extends UseSuspenseQueryHooksCommonOptions<T, TError> {
-//   queryFn: (...args: A) => Promise<T[]>;
-// }
-
-export interface CreateSuspenseEntityQueryReturnCommon<A = unknown> {
-  invalidate: (args: A) => void;
-  prefetch: (args: A) => void;
+export interface CreateSuspenseEntityQueryReturnCommon<TArguments = unknown> {
+  invalidate: (args: TArguments) => void;
+  prefetch: (args: TArguments) => void;
   baseQueryKeyHash: string;
 }
 
 export interface CreateSuspenseEntityQueryReturn<
   // T = unknown,
-  S = unknown,
-  A = unknown,
+  THydrated = unknown,
+  TArguments = unknown,
   TError = DefaultError,
-  EP extends EntityHydrated<S> = EntityHydrated<S>
-> extends CreateSuspenseEntityQueryReturnCommon<A> {
+  THydratedEntity extends EntityHydrated<THydrated> = EntityHydrated<THydrated>
+> extends CreateSuspenseEntityQueryReturnCommon<TArguments> {
   useEntityQuery: (
-    args: A,
+    args: TArguments,
     options?: UseSuspenseQueryHookCommonOptions<string, TError>
-  ) => EP;
+  ) => THydratedEntity;
 }
 
 export interface CreateSuspenseEntityListQueryReturn<
   // T = unknown,
-  S = unknown,
-  A = unknown,
+  THydrated = unknown,
+  TArguments = unknown,
   TError = DefaultError,
-  EP extends EntityHydrated<S> = EntityHydrated<S>
-> extends CreateSuspenseEntityQueryReturnCommon<A> {
+  THydratedEntity extends EntityHydrated<THydrated> = EntityHydrated<THydrated>
+> extends CreateSuspenseEntityQueryReturnCommon<TArguments> {
   useEntityListQuery: (
-    args: A,
+    args: TArguments,
     options?: UseSuspenseQueryHookCommonOptions<string, TError>
-  ) => EP[];
+  ) => THydratedEntity[];
 }
 
 export class CollectionHooksManager<
-  T = unknown,
-  S = unknown,
-  E extends EntityHydratedInternal<S> = EntityHydratedInternal<S>,
-  EP extends EntityHydrated<S> = EntityHydrated<S>
+  TData = unknown,
+  THydrated = unknown,
+  THydratedEntityInternal extends EntityHydratedInternal<THydrated> = EntityHydratedInternal<THydrated>,
+  THydratedEntity extends EntityHydrated<THydrated> = EntityHydrated<THydrated>
 > {
   private readonly collectionName: string;
   private readonly queryClient: QueryClient;
-  private readonly collectionManger: CollectionManager<T, S, E>;
+  private readonly collectionManger: CollectionManager<
+    TData,
+    THydrated,
+    THydratedEntityInternal
+  >;
   private readonly collectionIdGenerator: CollectionIdGenerator;
 
   constructor(
     collectionName: string,
     queryClient: QueryClient,
-    collectionManger: CollectionManager<T, S, E>,
+    collectionManger: CollectionManager<
+      TData,
+      THydrated,
+      THydratedEntityInternal
+    >,
     generateId?: GenerateEntityIdCallback
   ) {
     this.collectionName = collectionName;
@@ -94,10 +86,15 @@ export class CollectionHooksManager<
     );
   }
 
-  createSuspenseEntityQuery<A = unknown, TError = DefaultError>(
+  createSuspenseEntityQuery<TArguments = unknown, TError = DefaultError>(
     // options: UseSuspenseEntityQueryHooksOptions<A, T, TError>
-    queryFn: UseEntityQueryFunction<A, T>
-  ): CreateSuspenseEntityQueryReturn<S, A, TError, EP> {
+    queryFn: UseEntityQueryFunction<TArguments, TData>
+  ): CreateSuspenseEntityQueryReturn<
+    THydrated,
+    TArguments,
+    TError,
+    THydratedEntity
+  > {
     if (!queryFn.name) {
       throw new Error("Bad Query Callback");
     }
@@ -107,7 +104,7 @@ export class CollectionHooksManager<
     return {
       baseQueryKeyHash,
       useEntityQuery: (
-        args: A,
+        args: TArguments,
         options?: UseSuspenseQueryHookCommonOptions<string, TError>
       ) => {
         const queryKey = this.createQueryKey(queryFn.name, args);
@@ -133,16 +130,23 @@ export class CollectionHooksManager<
           refetchIntervalInBackground: options?.refetchIntervalInBackground,
         });
 
-        return this.collectionManger.collection.get(res.data)! as unknown as EP;
+        return this.collectionManger.collection.get(
+          res.data
+        )! as unknown as THydratedEntity;
       },
-      prefetch: (args?: A) => {},
-      invalidate: (args?: A) => {},
+      prefetch: (args?: TArguments) => {},
+      invalidate: (args?: TArguments) => {},
     };
   }
 
-  createSuspenseEntityListQuery<A = unknown, TError = DefaultError>(
-    queryFn: UseEntityListQueryFunction<A, T>
-  ): CreateSuspenseEntityListQueryReturn<S, A, TError, EP> {
+  createSuspenseEntityListQuery<TArguments = unknown, TError = DefaultError>(
+    queryFn: UseEntityListQueryFunction<TArguments, TData>
+  ): CreateSuspenseEntityListQueryReturn<
+    THydrated,
+    TArguments,
+    TError,
+    THydratedEntity
+  > {
     if (!queryFn.name) {
       throw new Error("Bad Query Callback");
     }
@@ -182,7 +186,7 @@ export class CollectionHooksManager<
           refetchIntervalInBackground: options?.refetchIntervalInBackground,
         });
 
-        const list: Array<E> = [];
+        const list: Array<THydratedEntityInternal> = [];
 
         for (const id of res.data) {
           if (this.collectionManger.deletedRecordsIds.has(id)) {
@@ -196,21 +200,21 @@ export class CollectionHooksManager<
           }
         }
 
-        return list as unknown as EP[];
+        return list as unknown as THydratedEntity[];
       },
-      prefetch: (args?: A) => {},
-      invalidate: (args?: A) => {},
+      prefetch: (args?: TArguments) => {},
+      invalidate: (args?: TArguments) => {},
     };
   }
 
-  useCreateMutation<I>(
-    mutationFn: (input: I) => Promise<void>,
-    mapInput: CreateEntityInputMapCallback<I, T>
+  useCreateMutation<TInput>(
+    mutationFn: (input: TInput) => Promise<void>,
+    mapInput: CreateEntityInputMapCallback<TInput, TData>
   ) {
     const mutation = useMutation<
       void,
       DefaultError,
-      I,
+      TInput,
       { entityId: string; mutationStrategy: OptimisticMutationStrategy }
     >({
       mutationFn: (input) => mutationFn(input),
@@ -224,14 +228,14 @@ export class CollectionHooksManager<
       },
     });
 
-    const create = (input: I) => mutation.mutate(input);
+    const create = (input: TInput) => mutation.mutate(input);
 
     return create;
   }
 
-  @action private onCreateMutationMutate<I>(
-    input: I,
-    mapInput: CreateEntityInputMapCallback<I, T>
+  @action private onCreateMutationMutate<TInput>(
+    input: TInput,
+    mapInput: CreateEntityInputMapCallback<TInput, TData>
   ) {
     const id = this.collectionIdGenerator.generateEntityId();
     const data = mapInput(input, id);
@@ -256,12 +260,12 @@ export class CollectionHooksManager<
   }
 
   useDeleteMutation<TError = DefaultError, TContext = unknown>(
-    entity: EP,
-    mutationFn: (entity: EP) => Promise<void>,
+    entity: THydratedEntity,
+    mutationFn: (entity: THydratedEntity) => Promise<void>,
     options?: UseDeleteMutationHookOptions<TError, TContext>
   ) {
     const mutationStrategy = new OptimisticMutationStrategy(
-      entity as unknown as E,
+      entity as unknown as THydratedEntityInternal,
       this.queryClient,
       this.collectionName,
       void 0,
@@ -291,7 +295,7 @@ export class CollectionHooksManager<
   }
 
   @action onDeleteMutationMutate(
-    entity: EP,
+    entity: THydratedEntity,
     mutationStrategy: OptimisticMutationStrategy
   ) {
     mutationStrategy.onMutate();
@@ -299,7 +303,7 @@ export class CollectionHooksManager<
   }
 
   private onDeleteMutationSuccess(
-    entity: EP,
+    entity: THydratedEntity,
     mutationStrategy: OptimisticMutationStrategy
   ) {
     this.collectionManger.deleteEntity(entity.entityId);
@@ -307,14 +311,17 @@ export class CollectionHooksManager<
   }
 
   @action private onDeleteMutationError(
-    entity: EP,
+    entity: THydratedEntity,
     mutationStrategy: OptimisticMutationStrategy
   ) {
     this.collectionManger.deletedRecordsIds.delete(entity.entityId);
     mutationStrategy.onError();
   }
 
-  private createQueryKey<A = unknown>(fnName: string, args: A) {
+  private createQueryKey<TArguments = unknown>(
+    fnName: string,
+    args: TArguments
+  ) {
     return [this.collectionName, fnName, args];
   }
 

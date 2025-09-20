@@ -6,25 +6,28 @@ import type { EntityHydrationCallback, GetEntityIdCallback } from "./types";
 const COLLECTIONS_REGISTRY = new Set<string>();
 
 export class CollectionManager<
-  T = unknown,
-  S = unknown,
-  E extends EntityHydratedInternal<S> = EntityHydratedInternal<S>
+  TData = unknown,
+  THydrated = unknown,
+  THydratedEntityInternal extends EntityHydratedInternal<THydrated> = EntityHydratedInternal<THydrated>
   //   EP extends EntityHydrated<S> = EntityHydrated<S>
 > {
-  @observable accessor collection = new Map<string, E>();
+  @observable accessor collection = new Map<string, THydratedEntityInternal>();
   @observable accessor deletedRecordsIds = new Set<string>();
   @observable accessor clientOnlyEntitiesIds = new Set<string>();
 
   private readonly collectionName: string;
   private readonly queryClient: QueryClient;
-  private readonly hydrateEntityCallback: EntityHydrationCallback<T, S>;
-  private readonly getEntityIdCallback: GetEntityIdCallback<T>;
+  private readonly hydrateEntityCallback: EntityHydrationCallback<
+    TData,
+    THydrated
+  >;
+  private readonly getEntityIdCallback: GetEntityIdCallback<TData>;
 
   constructor(
     collectionName: string,
     queryClient: QueryClient,
-    hydrateEntityCallback: EntityHydrationCallback<T, S>,
-    getEntityIdCallback: GetEntityIdCallback<T>
+    hydrateEntityCallback: EntityHydrationCallback<TData, THydrated>,
+    getEntityIdCallback: GetEntityIdCallback<TData>
   ) {
     if (COLLECTIONS_REGISTRY.has(collectionName)) {
       throw new Error("Collection with this name already exists");
@@ -40,14 +43,14 @@ export class CollectionManager<
     this.initQueryClientCacheListener();
   }
 
-  getEntityId(data: T) {
+  getEntityId(data: TData) {
     const id = this.getEntityIdCallback(data);
 
     return typeof id === "number" ? id.toString() : id;
   }
 
   @action setEntity(
-    entityData: T,
+    entityData: TData,
     queryHash: string,
     clearQueryHashes?: boolean
   ) {
@@ -85,7 +88,7 @@ export class CollectionManager<
     return newEntity;
   }
 
-  setEntities(entities: T[], queryHash: string) {
+  setEntities(entities: TData[], queryHash: string) {
     if (!Array.isArray(entities)) {
       throw new Error("Bad Array");
     }

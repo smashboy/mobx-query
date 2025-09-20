@@ -13,26 +13,35 @@ import type {
 import { CollectionManager } from "./CollectionManager";
 import { CollectionHooksManager } from "./CollectionHooksManager";
 
-export interface EntityCollectionOptions<T = unknown, S = unknown> {
-  getEntityId: GetEntityIdCallback<T>;
-  hydrate: EntityHydrationCallback<T, S>;
+export interface EntityCollectionOptions<TData = unknown, THydrated = unknown> {
+  getEntityId: GetEntityIdCallback<TData>;
+  hydrate: EntityHydrationCallback<TData, THydrated>;
   generateId?: GenerateEntityIdCallback;
   strategyOptions?: OptimisticMutationStrategyOptions;
 }
 
 export abstract class EntityCollection<
-  T = unknown,
-  S = unknown,
-  E extends EntityHydratedInternal<S> = EntityHydratedInternal<S>,
-  EP extends EntityHydrated<S> = EntityHydrated<S>
+  TData = unknown,
+  THydrated = unknown,
+  THydratedEntityInternal extends EntityHydratedInternal<THydrated> = EntityHydratedInternal<THydrated>,
+  THydratedEntity extends EntityHydrated<THydrated> = EntityHydrated<THydrated>
 > {
-  private readonly collectionManager: CollectionManager<T, S, E>;
-  private readonly hooksManager: CollectionHooksManager<T, S, E, EP>;
+  private readonly collectionManager: CollectionManager<
+    TData,
+    THydrated,
+    THydratedEntityInternal
+  >;
+  private readonly hooksManager: CollectionHooksManager<
+    TData,
+    THydrated,
+    THydratedEntityInternal,
+    THydratedEntity
+  >;
 
   constructor(
     collectionName: string,
     queryClient: QueryClient,
-    options: EntityCollectionOptions<T, S>
+    options: EntityCollectionOptions<TData, THydrated>
   ) {
     this.collectionManager = new CollectionManager(
       collectionName,
@@ -51,7 +60,7 @@ export abstract class EntityCollection<
 
   @computed
   get clientOnlyEntities() {
-    const entities = new Map<string, EP>();
+    const entities = new Map<string, THydratedEntity>();
 
     for (const entityId of this.collectionManager.clientOnlyEntitiesIds.values()) {
       const entity = this.collectionManager.collection.get(entityId);
@@ -60,25 +69,28 @@ export abstract class EntityCollection<
         continue;
       }
 
-      entities.set(entityId, entity as unknown as EP);
+      entities.set(entityId, entity as unknown as THydratedEntity);
     }
 
     return entities;
   }
 
   createSuspenseEntityQuery<A = unknown, TError = DefaultError>(
-    queryFn: UseEntityQueryFunction<A, T>
+    queryFn: UseEntityQueryFunction<A, TData>
   ) {
     return this.hooksManager.createSuspenseEntityQuery<A, TError>(queryFn);
   }
 
   createSuspenseEntityListQuery<A = unknown, TError = DefaultError>(
-    queryFn: UseEntityListQueryFunction<A, T>
+    queryFn: UseEntityListQueryFunction<A, TData>
   ) {
     return this.hooksManager.createSuspenseEntityListQuery<A, TError>(queryFn);
   }
 
-  useDeleteMutation(entity: EP, mutationFn: (entity: EP) => Promise<void>) {
+  useDeleteMutation(
+    entity: THydratedEntity,
+    mutationFn: (entity: THydratedEntity) => Promise<void>
+  ) {
     return this.hooksManager.useDeleteMutation(entity, mutationFn);
   }
 }

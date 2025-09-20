@@ -9,9 +9,9 @@ import { ViewModel } from "mobx-utils";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
 import type { EntityState, UseUpdateMutationHookOptions } from "./types";
 
-export type EntityConstructor<T = unknown> = typeof Entity<T>;
+export type EntityConstructor<THydrated = unknown> = typeof Entity<THydrated>;
 
-export type EntityHydratedInternal<T> = T & Entity<T>;
+export type EntityHydratedInternal<THydrated> = THydrated & Entity<THydrated>;
 export type EntityHydrated<T = unknown> = Omit<
   EntityHydratedInternal<T>,
   | "_newEntity"
@@ -30,7 +30,7 @@ export interface EntityEvents {
   onAllQueryHashesRemoved: (entityId: string) => void;
 }
 
-export class Entity<T = unknown> extends ViewModel<T> {
+export class Entity<THydrated = unknown> extends ViewModel<THydrated> {
   entityId: string;
   @observable accessor state: EntityState = "confirmed";
 
@@ -41,7 +41,7 @@ export class Entity<T = unknown> extends ViewModel<T> {
 
   constructor(
     entityId: string,
-    entity: T,
+    entity: THydrated,
     collectionName: string,
     queryClient: QueryClient,
     queryHashes: string[],
@@ -103,7 +103,7 @@ export class Entity<T = unknown> extends ViewModel<T> {
     return save;
   }
 
-  _newEntity(data: T, queryHashes: string[]) {
+  _newEntity(data: THydrated, queryHashes: string[]) {
     for (const hash of this.queryHashes) {
       queryHashes.push(hash);
     }
