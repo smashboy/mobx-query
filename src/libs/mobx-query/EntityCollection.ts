@@ -63,7 +63,7 @@ export abstract class EntityCollection<
   get clientOnlyEntities() {
     const entities = new Map<string, THydratedEntity>();
 
-    for (const entityId of this.collectionManager.clientOnlyEntitiesIds.values()) {
+    for (const entityId of this.collectionManager.clientOnlyEntityIds.values()) {
       const entity = this.collectionManager.collection.get(entityId);
 
       if (!entity) {

@@ -15,8 +15,8 @@ export class CollectionManager<
   THydratedEntityInternal extends EntityHydratedInternal<THydrated> = EntityHydratedInternal<THydrated>
 > {
   @observable accessor collection = new Map<string, THydratedEntityInternal>();
-  @observable accessor deletedRecordsIds = new Set<string>();
-  @observable accessor clientOnlyEntitiesIds = new Set<string>();
+  @observable accessor deletedRecordIds = new Set<string>();
+  @observable accessor clientOnlyEntityIds = new Set<string>();
 
   private readonly collectionName: string;
   private readonly queryClient: QueryClient;
@@ -111,8 +111,8 @@ export class CollectionManager<
 
   @action deleteEntity(entityId: string) {
     this.collection.delete(entityId);
-    this.clientOnlyEntitiesIds.delete(entityId);
-    this.deletedRecordsIds.delete(entityId);
+    this.clientOnlyEntityIds.delete(entityId);
+    this.deletedRecordIds.delete(entityId);
   }
 
   private initQueryClientCacheListener() {

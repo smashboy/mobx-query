@@ -194,7 +194,7 @@ export class CollectionHooksManager<
         const list: Array<THydratedEntityInternal> = [];
 
         for (const id of res.data) {
-          if (this.collectionManger.deletedRecordsIds.has(id)) {
+          if (this.collectionManger.deletedRecordIds.has(id)) {
             continue;
           }
 
@@ -244,7 +244,7 @@ export class CollectionHooksManager<
   ) {
     const id = this.collectionIdGenerator.generateEntityId();
     const data = mapInput(input, id);
-    this.collectionManger.clientOnlyEntitiesIds.add(id);
+    this.collectionManger.clientOnlyEntityIds.add(id);
     const entity = this.collectionManger.setEntity(data, id);
 
     const mutationStrategy = new OptimisticMutationStrategy(
@@ -305,7 +305,7 @@ export class CollectionHooksManager<
     mutationStrategy: OptimisticMutationStrategy
   ) {
     mutationStrategy.onMutate();
-    this.collectionManger.deletedRecordsIds.add(entity.entityId);
+    this.collectionManger.deletedRecordIds.add(entity.entityId);
   }
 
   private onDeleteMutationSuccess(
@@ -320,7 +320,7 @@ export class CollectionHooksManager<
     entity: THydratedEntity,
     mutationStrategy: OptimisticMutationStrategy
   ) {
-    this.collectionManger.deletedRecordsIds.delete(entity.entityId);
+    this.collectionManger.deletedRecordIds.delete(entity.entityId);
     mutationStrategy.onError();
   }
 
