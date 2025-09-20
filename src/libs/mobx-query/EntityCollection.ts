@@ -2,13 +2,13 @@
 import { computed } from "mobx";
 import { type EntityHydrated, type EntityHydratedInternal } from "./Entity";
 import { type DefaultError, type QueryClient } from "@tanstack/react-query";
-import { type OptimisticMutationStrategyOptions } from "./OptimisticMutationStrategy";
 import type {
   EntityHydrationCallback,
   GetEntityIdCallback,
   UseEntityQueryFunction,
   UseEntityListQueryFunction,
   GenerateEntityIdCallback,
+  OptimisticMutationStrategyOptions,
 } from "./types";
 import { CollectionManager } from "./CollectionManager";
 import { CollectionHooksManager } from "./CollectionHooksManager";

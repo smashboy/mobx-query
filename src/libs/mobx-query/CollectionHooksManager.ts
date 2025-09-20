@@ -12,8 +12,9 @@ import type {
   CreateEntityInputMapCallback,
   UseEntityQueryFunction,
   UseEntityListQueryFunction,
-  UseSuspenseQueryHooksCommonOptions,
+  UseSuspenseQueryHookCommonOptions,
   GenerateEntityIdCallback,
+  UseDeleteMutationHookOptions,
 } from "./types";
 import { action } from "mobx";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
@@ -50,7 +51,7 @@ export interface CreateSuspenseEntityQueryReturn<
 > extends CreateSuspenseEntityQueryReturnCommon<A> {
   useEntityQuery: (
     args: A,
-    options?: UseSuspenseQueryHooksCommonOptions<string, TError>
+    options?: UseSuspenseQueryHookCommonOptions<string, TError>
   ) => EP;
 }
 
@@ -63,7 +64,7 @@ export interface CreateSuspenseEntityListQueryReturn<
 > extends CreateSuspenseEntityQueryReturnCommon<A> {
   useEntityListQuery: (
     args: A,
-    options?: UseSuspenseQueryHooksCommonOptions<string, TError>
+    options?: UseSuspenseQueryHookCommonOptions<string, TError>
   ) => EP[];
 }
 
@@ -107,7 +108,7 @@ export class CollectionHooksManager<
       baseQueryKeyHash,
       useEntityQuery: (
         args: A,
-        options?: UseSuspenseQueryHooksCommonOptions<string, TError>
+        options?: UseSuspenseQueryHookCommonOptions<string, TError>
       ) => {
         const queryKey = this.createQueryKey(queryFn.name, args);
 
@@ -206,19 +207,21 @@ export class CollectionHooksManager<
     mutationFn: (input: I) => Promise<void>,
     mapInput: CreateEntityInputMapCallback<I, T>
   ) {
-    const mutationStrategy = new OptimisticMutationStrategy(
-      this.queryClient,
-      this.collectionName,
-      void 0
-    );
-
-    const mutation = useMutation<void, DefaultError, I, { entityId: string }>({
+    const mutation = useMutation<
+      void,
+      DefaultError,
+      I,
+      { entityId: string; mutationStrategy: OptimisticMutationStrategy }
+    >({
       mutationFn: (input) => mutationFn(input),
       onMutate: (input) => this.onCreateMutationMutate(input, mapInput),
       onSuccess: (data, vars, ctx) =>
         this.onCreateMutationSuccess(ctx.entityId),
-      onError: (err, vars, ctx) =>
-        this.onCreateMutationError(mutationStrategy, ctx?.entityId),
+      onError: (err, vars, ctx) => {
+        if (ctx) {
+          this.onCreateMutationError(ctx.mutationStrategy);
+        }
+      },
     });
 
     const create = (input: I) => mutation.mutate(input);
@@ -233,36 +236,39 @@ export class CollectionHooksManager<
     const id = this.collectionIdGenerator.generateEntityId();
     const data = mapInput(input, id);
     this.collectionManger.clientOnlyEntitiesIds.add(id);
-    this.collectionManger.setEntity(data, id);
-    return { entityId: id };
+    const entity = this.collectionManger.setEntity(data, id);
+
+    const mutationStrategy = new OptimisticMutationStrategy(
+      entity,
+      this.queryClient,
+      this.collectionName
+    );
+
+    return { entityId: id, mutationStrategy };
   }
 
   private onCreateMutationSuccess(entityId: string) {
     this.collectionManger.deleteEntity(entityId);
   }
 
-  private onCreateMutationError(
-    mutationStrategy: OptimisticMutationStrategy,
-    entityId?: string
-  ) {
-    if (!entityId) {
-      return;
-    }
-
-    const entity = this.collectionManger.collection.get(entityId);
-
-    if (!entity) {
-      return;
-    }
-
-    mutationStrategy.onError(entity);
+  private onCreateMutationError(mutationStrategy: OptimisticMutationStrategy) {
+    mutationStrategy.onError();
   }
 
-  useDeleteMutation(entity: EP, mutationFn: (entity: EP) => Promise<void>) {
+  useDeleteMutation<TError = DefaultError, TContext = unknown>(
+    entity: EP,
+    mutationFn: (entity: EP) => Promise<void>,
+    options?: UseDeleteMutationHookOptions<TError, TContext>
+  ) {
     const mutationStrategy = new OptimisticMutationStrategy(
+      entity as unknown as E,
       this.queryClient,
       this.collectionName,
-      entity as unknown as E
+      void 0,
+      {
+        invalidationStrategy: options?.invalidationStrategy,
+        onMutationErrorStrategy: options?.onMutationErrorStrategy,
+      }
     );
 
     const mutation = useMutation({
@@ -270,6 +276,13 @@ export class CollectionHooksManager<
       onMutate: () => this.onDeleteMutationMutate(entity, mutationStrategy),
       onSuccess: () => this.onDeleteMutationSuccess(entity, mutationStrategy),
       onError: () => this.onDeleteMutationError(entity, mutationStrategy),
+      gcTime: options?.gcTime,
+      meta: options?.meta,
+      networkMode: options?.networkMode,
+      retry: options?.retry,
+      retryDelay: options?.retryDelay,
+      scope: options?.scope,
+      throwOnError: options?.throwOnError,
     });
 
     const deleteEntity = () => mutation.mutate();

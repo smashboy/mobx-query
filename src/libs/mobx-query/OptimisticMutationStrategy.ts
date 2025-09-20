@@ -1,18 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { action } from "mobx";
-import type { EntityState } from "./types";
-
-export type OptimisticMutationInvalidationStrategy =
-  | "collection"
-  | "related-queries"
-  | "none";
-
-export type OptimisticMutationErrorStrategy = "rollback" | "keep";
-
-export interface OptimisticMutationStrategyOptions {
-  invalidationStrategy?: OptimisticMutationInvalidationStrategy;
-  onMutationErrorStrategy?: OptimisticMutationErrorStrategy;
-}
+import type { EntityState, OptimisticMutationStrategyOptions } from "./types";
 
 export interface EntityLike {
   _removeQueryHash: (hash: string) => void;
@@ -22,16 +10,16 @@ export interface EntityLike {
 }
 
 export class OptimisticMutationStrategy {
-  private readonly entity?: EntityLike;
+  private readonly entity: EntityLike;
   private readonly queryClient: QueryClient;
   private readonly collectionName: string;
   private readonly collectionOptions: Required<OptimisticMutationStrategyOptions>;
   private readonly mutationOptions?: OptimisticMutationStrategyOptions;
 
   constructor(
+    entity: EntityLike,
     queryClient: QueryClient,
     collectionName: string,
-    entity?: EntityLike,
     collectionOptions?: OptimisticMutationStrategyOptions,
     mutationOptions?: OptimisticMutationStrategyOptions
   ) {
@@ -63,20 +51,19 @@ export class OptimisticMutationStrategy {
         this.invalidateCollectionRelatedQueries();
         break;
       case "related-queries":
-        this.invalidateEntityRelatedQueries(entity);
+        this.invalidateEntityRelatedQueries();
         break;
       default:
         break;
     }
   }
 
-  @action onError(entity?: EntityLike) {
-    entity = (entity ?? this.entity)!;
-    entity.state = "failed";
+  @action onError() {
+    this.entity.state = "failed";
     const strategy = this.getMutationErrorStrategy();
 
     if (strategy === "rollback") {
-      entity.reset();
+      this.entity.reset();
     }
   }
 
@@ -98,11 +85,10 @@ export class OptimisticMutationStrategy {
     this.queryClient.invalidateQueries({ queryKey: [this.collectionName] });
   }
 
-  private invalidateEntityRelatedQueries(entity?: EntityLike) {
+  private invalidateEntityRelatedQueries() {
     const cache = this.queryClient.getQueryCache();
-    entity = (entity ?? this.entity)!;
 
-    for (const hash of entity.queryHashes) {
+    for (const hash of this.entity.queryHashes) {
       const query = cache.get(hash);
       if (query) {
         query.invalidate();
@@ -110,7 +96,7 @@ export class OptimisticMutationStrategy {
           query.fetch();
         }
       } else {
-        entity._removeQueryHash(hash);
+        this.entity._removeQueryHash(hash);
       }
     }
   }

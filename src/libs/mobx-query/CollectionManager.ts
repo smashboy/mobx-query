@@ -61,14 +61,12 @@ export class CollectionManager<
 
     if (entity) {
       const updatedEntity = entity._newEntity(
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        this.options.hydrate(entityData),
+        this.hydrateEntityCallback(entityData),
         [queryHash]
       );
 
       this.collection.set(id, updatedEntity as never);
-      return;
+      return updatedEntity;
     }
 
     const newEntity = new Entity(
@@ -84,6 +82,7 @@ export class CollectionManager<
     );
 
     this.collection.set(id, newEntity as never);
+    return newEntity;
   }
 
   setEntities(entities: T[], queryHash: string) {

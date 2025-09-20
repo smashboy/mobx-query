@@ -1,9 +1,13 @@
 /* eslint-disable react-hooks/rules-of-hooks */
-import { useMutation, type QueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  type DefaultError,
+  type QueryClient,
+} from "@tanstack/react-query";
 import { observable } from "mobx";
 import { ViewModel } from "mobx-utils";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
-import type { EntityState } from "./types";
+import type { EntityState, UseUpdateMutationHookOptions } from "./types";
 
 export type EntityConstructor<T = unknown> = typeof Entity<T>;
 
@@ -53,15 +57,23 @@ export class Entity<T = unknown> extends ViewModel<T> {
     }
   }
 
-  useUpdateMutation(mutationFn: (draft: this) => Promise<void>) {
+  useUpdateMutation<TError = DefaultError, TContext = unknown>(
+    mutationFn: (draft: this) => Promise<void>,
+    options?: UseUpdateMutationHookOptions<TError, TContext>
+  ) {
     if (!mutationFn.name) {
       throw new Error("Bad Mutation Callback");
     }
 
     const mutationStrategy = new OptimisticMutationStrategy(
+      this,
       this.queryClient,
       this.collectionName,
-      this
+      void 0,
+      {
+        invalidationStrategy: options?.invalidationStrategy,
+        onMutationErrorStrategy: options?.onMutationErrorStrategy,
+      }
     );
 
     const mutation = useMutation({
@@ -69,6 +81,13 @@ export class Entity<T = unknown> extends ViewModel<T> {
       onMutate: () => mutationStrategy.onMutate(),
       onSuccess: () => mutationStrategy.onSuccess(),
       onError: () => mutationStrategy.onError(),
+      gcTime: options?.gcTime,
+      meta: options?.meta,
+      networkMode: options?.networkMode,
+      retry: options?.retry,
+      retryDelay: options?.retryDelay,
+      scope: options?.scope,
+      throwOnError: options?.throwOnError,
     });
 
     const save = () => {
