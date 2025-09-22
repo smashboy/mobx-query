@@ -91,9 +91,19 @@ export class Entity<THydrated = unknown> extends ViewModel<THydrated> {
 
     const mutation = useMutation({
       mutationFn: () => mutationFn(this),
-      onMutate: () => mutationStrategy.onMutate(),
-      onSuccess: () => mutationStrategy.onSuccess(),
-      onError: () => mutationStrategy.onError(),
+      onMutate: () => {
+        mutationStrategy.onMutate();
+        options?.onMutate?.();
+      },
+      onSuccess: () => {
+        mutationStrategy.onSuccess();
+        options?.onSuccess?.();
+      },
+      onError: () => {
+        mutationStrategy.onError();
+        options?.onError?.();
+      },
+      onSettled: () => options?.onSettled?.(),
       gcTime: options?.gcTime,
       meta: options?.meta,
       networkMode: options?.networkMode,

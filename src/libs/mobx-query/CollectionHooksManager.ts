@@ -22,8 +22,9 @@ import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
 import { CollectionIdGenerator } from "./CollectionIdGenerator";
 
 export interface CreateSuspenseEntityQueryReturnCommon<TArguments = unknown> {
-  invalidate: (args: TArguments) => void;
+  invalidate: (args?: TArguments) => void;
   prefetch: (args: TArguments) => void;
+  ensureData: (args: TArguments) => void;
   baseQueryKeyHash: string;
 }
 
@@ -90,7 +91,6 @@ export class CollectionHooksManager<
   }
 
   createSuspenseEntityQuery<TArguments = unknown, TError = DefaultError>(
-    // options: UseSuspenseEntityQueryHooksOptions<A, T, TError>
     queryFn: UseEntityQueryFunction<TArguments, TData>
   ): CreateSuspenseEntityQueryReturn<
     THydrated,
@@ -104,6 +104,12 @@ export class CollectionHooksManager<
 
     const baseQueryKeyHash = hashKey(this.createQueryBaseKey(queryFn.name));
 
+    const handleQueryFn = async (args: TArguments, queryKey: unknown[]) => {
+      const data = await queryFn(args);
+      this.collectionManger.setEntity(data, hashKey(queryKey), true);
+      return this.collectionManger.getEntityId(data);
+    };
+
     return {
       baseQueryKeyHash,
       useEntityQuery: (
@@ -114,11 +120,7 @@ export class CollectionHooksManager<
 
         const res = useSuspenseQuery<string, TError>({
           queryKey,
-          queryFn: async () => {
-            const data = await queryFn(args);
-            this.collectionManger.setEntity(data, hashKey(queryKey), true);
-            return this.collectionManger.getEntityId(data);
-          },
+          queryFn: () => handleQueryFn(args, queryKey),
           gcTime: options?.gcTime,
           // staleTime: options.staleTime,
           meta: options?.meta,
@@ -137,7 +139,20 @@ export class CollectionHooksManager<
           res.data
         )! as unknown as THydratedEntity;
       },
-      prefetch: (args?: TArguments) => {},
+      prefetch: (args: TArguments) => {
+        const queryKey = this.createQueryKey(queryFn.name, args);
+        this.queryClient.prefetchQuery({
+          queryKey,
+          queryFn: () => handleQueryFn(args, queryKey),
+        });
+      },
+      ensureData: (args: TArguments) => {
+        const queryKey = this.createQueryKey(queryFn.name, args);
+        this.queryClient.ensureQueryData({
+          queryKey,
+          queryFn: () => handleQueryFn(args, queryKey),
+        });
+      },
       invalidate: (args?: TArguments) => {},
     };
   }
@@ -156,6 +171,17 @@ export class CollectionHooksManager<
 
     const baseQueryKeyHash = hashKey(this.createQueryBaseKey(queryFn.name));
 
+    const handleQueryFn = async (args: TArguments, queryKey: unknown[]) => {
+      try {
+        const data = await queryFn(args);
+        this.collectionManger.setEntities(data, hashKey(queryKey));
+        return data.map((item) => this.collectionManger.getEntityId(item));
+      } catch (error) {
+        console.error(error);
+        return [];
+      }
+    };
+
     return {
       baseQueryKeyHash,
       useEntityListQuery: (args, options) => {
@@ -163,18 +189,7 @@ export class CollectionHooksManager<
 
         const res = useSuspenseQuery({
           queryKey,
-          queryFn: async () => {
-            try {
-              const data = await queryFn(args);
-              this.collectionManger.setEntities(data, hashKey(queryKey));
-              return data.map((item) =>
-                this.collectionManger.getEntityId(item)
-              );
-            } catch (error) {
-              console.error(error);
-              return [];
-            }
-          },
+          queryFn: () => handleQueryFn(args, queryKey),
           gcTime: options?.gcTime,
           // staleTime: options.staleTime,
           meta: options?.meta,
@@ -205,14 +220,28 @@ export class CollectionHooksManager<
 
         return list as unknown as THydratedEntity[];
       },
-      prefetch: (args?: TArguments) => {},
+      prefetch: (args: TArguments) => {
+        const queryKey = this.createQueryKey(queryFn.name, args);
+        this.queryClient.prefetchQuery({
+          queryKey,
+          queryFn: () => handleQueryFn(args, queryKey),
+        });
+      },
+      ensureData: (args: TArguments) => {
+        const queryKey = this.createQueryKey(queryFn.name, args);
+        this.queryClient.ensureQueryData({
+          queryKey,
+          queryFn: () => handleQueryFn(args, queryKey),
+        });
+      },
       invalidate: (args?: TArguments) => {},
     };
   }
 
-  useCreateMutation<TInput>(
+  useCreateMutation<TInput, TError = DefaultError, TContext = unknown>(
     mutationFn: (input: TInput) => Promise<void>,
-    mapInput: CreateEntityInputMapCallback<TInput, TData>
+    mapInput: CreateEntityInputMapCallback<TInput, TData>,
+    options?: UseDeleteMutationHookOptions<TError, TContext>
   ) {
     const mutation = useMutation<
       void,
@@ -221,15 +250,31 @@ export class CollectionHooksManager<
       { entityId: string; mutationStrategy: OptimisticMutationStrategy }
     >({
       mutationFn: (input) => mutationFn(input),
-      onMutate: (input) => this.onCreateMutationMutate(input, mapInput),
+      onMutate: (input) =>
+        this.onCreateMutationMutate(input, mapInput, options?.onMutate),
       onSuccess: (_data, _vars, mutationResult) =>
-        this.onCreateMutationSuccess(mutationResult!.entityId),
+        this.onCreateMutationSuccess(
+          mutationResult!.entityId,
+          options?.onSuccess
+        ),
       onError: (_err, _vars, mutationResult) => {
         this.onCreateMutationError(
           mutationResult!.entityId,
-          mutationResult!.mutationStrategy
+          mutationResult!.mutationStrategy,
+          options?.onError
         );
       },
+      onSettled: () => options?.onSettled?.(),
+      gcTime: options?.gcTime,
+      meta: options?.meta,
+      networkMode: options?.networkMode,
+      // @ts-expect-error: todo
+      retry: options?.retry,
+      // @ts-expect-error: todo
+      retryDelay: options?.retryDelay,
+      scope: options?.scope,
+      // @ts-expect-error: todo
+      throwOnError: options?.throwOnError,
     });
 
     const create = (input: TInput) => mutation.mutate(input);
@@ -239,7 +284,8 @@ export class CollectionHooksManager<
 
   @action private onCreateMutationMutate<TInput>(
     input: TInput,
-    mapInput: CreateEntityInputMapCallback<TInput, TData>
+    mapInput: CreateEntityInputMapCallback<TInput, TData>,
+    onMutate?: () => void
   ) {
     const id = this.collectionIdGenerator.generateEntityId();
     const data = mapInput(input, id);
@@ -254,23 +300,28 @@ export class CollectionHooksManager<
     );
 
     mutationStrategy.onMutate();
+    onMutate?.();
 
     return { entityId: id, mutationStrategy };
   }
 
-  private onCreateMutationSuccess(entityId: string) {
+  private onCreateMutationSuccess(entityId: string, onSuccess?: () => void) {
     this.collectionManger.deleteEntity(entityId);
+    onSuccess?.();
   }
 
   private onCreateMutationError(
     entityId: string,
-    mutationStrategy: OptimisticMutationStrategy
+    mutationStrategy: OptimisticMutationStrategy,
+    onError?: () => void
   ) {
     const strategy = mutationStrategy.getMutationErrorStrategy();
 
     if (strategy === "rollback") {
       this.collectionManger.deleteEntity(entityId);
     }
+
+    onError?.();
   }
 
   useDeleteMutation<TError = DefaultError, TContext = unknown>(
@@ -291,9 +342,21 @@ export class CollectionHooksManager<
 
     const mutation = useMutation({
       mutationFn: () => mutationFn(entity),
-      onMutate: () => this.onDeleteMutationMutate(entity, mutationStrategy),
-      onSuccess: () => this.onDeleteMutationSuccess(entity, mutationStrategy),
-      onError: () => this.onDeleteMutationError(entity, mutationStrategy),
+      onMutate: () =>
+        this.onDeleteMutationMutate(
+          entity,
+          mutationStrategy,
+          options?.onMutate
+        ),
+      onSuccess: () =>
+        this.onDeleteMutationSuccess(
+          entity,
+          mutationStrategy,
+          options?.onSuccess
+        ),
+      onError: () =>
+        this.onDeleteMutationError(entity, mutationStrategy, options?.onError),
+      onSettled: () => options?.onSettled?.(),
       gcTime: options?.gcTime,
       meta: options?.meta,
       networkMode: options?.networkMode,
@@ -310,26 +373,32 @@ export class CollectionHooksManager<
 
   @action onDeleteMutationMutate(
     entity: THydratedEntity,
-    mutationStrategy: OptimisticMutationStrategy
+    mutationStrategy: OptimisticMutationStrategy,
+    onMutate?: () => void
   ) {
-    mutationStrategy.onMutate();
     this.collectionManger.deletedRecordIds.add(entity.entityId);
+    mutationStrategy.onMutate();
+    onMutate?.();
   }
 
   private onDeleteMutationSuccess(
     entity: THydratedEntity,
-    mutationStrategy: OptimisticMutationStrategy
+    mutationStrategy: OptimisticMutationStrategy,
+    onSuccess?: () => void
   ) {
     this.collectionManger.deleteEntity(entity.entityId);
     mutationStrategy.onSuccess();
+    onSuccess?.();
   }
 
   @action private onDeleteMutationError(
     entity: THydratedEntity,
-    mutationStrategy: OptimisticMutationStrategy
+    mutationStrategy: OptimisticMutationStrategy,
+    onError?: () => void
   ) {
     this.collectionManger.deletedRecordIds.delete(entity.entityId);
     mutationStrategy.onError();
+    onError?.();
   }
 
   private createQueryKey<TArguments = unknown>(

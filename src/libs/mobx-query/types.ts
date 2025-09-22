@@ -65,8 +65,19 @@ export interface UseMutationHookCommonOptions<
   TContext = unknown
 > extends Omit<
     UseMutationOptions<TData, TError, TVariables, TContext>,
-    "mutationFn" | "mutationKey"
-  > {}
+    | "mutationFn"
+    | "mutationKey"
+    | "onSuccess"
+    | "onError"
+    | "onMutate"
+    | "onSettled"
+  > {
+  // TODO
+  onMutate?: () => void;
+  onSuccess?: () => void;
+  onError?: () => void;
+  onSettled?: () => void;
+}
 
 export interface UseDeleteMutationHookOptions<
   TError = DefaultError,
