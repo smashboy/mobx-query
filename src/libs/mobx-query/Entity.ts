@@ -24,6 +24,10 @@ export type EntityHydrated<T = unknown> = Omit<
   | "model"
   | "localComputedValues"
   | "localValues"
+  | "submit"
+  | "reset"
+  | "resetProperty"
+  | "changedValues"
 >;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type EntityHydratedAny = EntityHydrated<any>;
