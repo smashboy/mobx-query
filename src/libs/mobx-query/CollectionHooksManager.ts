@@ -28,7 +28,6 @@ export interface CreateSuspenseEntityQueryReturnCommon<TArguments = unknown> {
 }
 
 export interface CreateSuspenseEntityQueryReturn<
-  // T = unknown,
   THydrated = unknown,
   TArguments = unknown,
   TError = DefaultError,
@@ -41,7 +40,6 @@ export interface CreateSuspenseEntityQueryReturn<
 }
 
 export interface CreateSuspenseEntityListQueryReturn<
-  // T = unknown,
   THydrated = unknown,
   TArguments = unknown,
   TError = DefaultError,
