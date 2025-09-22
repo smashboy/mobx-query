@@ -9,6 +9,8 @@ import type {
   UseEntityListQueryFunction,
   GenerateEntityIdCallback,
   OptimisticMutationStrategyOptions,
+  UseDeleteMutationHookOptions,
+  CreateEntityInputMapCallback,
 } from "./types";
 import { CollectionManager } from "./CollectionManager";
 import { CollectionHooksManager } from "./CollectionHooksManager";
@@ -104,10 +106,23 @@ export abstract class EntityCollection<
     return this.hooksManager.createSuspenseEntityListQuery<A, TError>(queryFn);
   }
 
-  useDeleteMutation(
-    entity: THydratedEntity,
-    mutationFn: (entity: THydratedEntity) => Promise<void>
+  useCreateMutation<TInput, TError = DefaultError, TContext = unknown>(
+    mutationFn: (input: TInput) => Promise<void>,
+    mapInput: CreateEntityInputMapCallback<TInput, TData>,
+    options?: UseDeleteMutationHookOptions<TError, TContext>
   ) {
-    return this.hooksManager.useDeleteMutation(entity, mutationFn);
+    return this.hooksManager.useCreateMutation(mutationFn, mapInput, options);
+  }
+
+  useDeleteMutation<TError = DefaultError, TContext = unknown>(
+    entity: THydratedEntity,
+    mutationFn: (entity: THydratedEntity) => Promise<void>,
+    options?: UseDeleteMutationHookOptions<TError, TContext>
+  ) {
+    return this.hooksManager.useDeleteMutation<TError, TContext>(
+      entity,
+      mutationFn,
+      options
+    );
   }
 }
