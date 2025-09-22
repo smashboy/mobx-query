@@ -224,12 +224,13 @@ export class CollectionHooksManager<
     >({
       mutationFn: (input) => mutationFn(input),
       onMutate: (input) => this.onCreateMutationMutate(input, mapInput),
-      onSuccess: (data, vars, ctx) =>
-        this.onCreateMutationSuccess(ctx.entityId),
-      onError: (err, vars, ctx) => {
-        if (ctx) {
-          this.onCreateMutationError(ctx.mutationStrategy);
-        }
+      onSuccess: (_data, _vars, mutationResult) =>
+        this.onCreateMutationSuccess(mutationResult!.entityId),
+      onError: (_err, _vars, mutationResult) => {
+        this.onCreateMutationError(
+          mutationResult!.entityId,
+          mutationResult!.mutationStrategy
+        );
       },
     });
 
@@ -263,8 +264,15 @@ export class CollectionHooksManager<
     this.collectionManger.deleteEntity(entityId);
   }
 
-  private onCreateMutationError(mutationStrategy: OptimisticMutationStrategy) {
-    mutationStrategy.onError();
+  private onCreateMutationError(
+    entityId: string,
+    mutationStrategy: OptimisticMutationStrategy
+  ) {
+    const strategy = mutationStrategy.getMutationErrorStrategy();
+
+    if (strategy === "rollback") {
+      this.collectionManger.deleteEntity(entityId);
+    }
   }
 
   useDeleteMutation<TError = DefaultError, TContext = unknown>(

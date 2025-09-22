@@ -65,25 +65,25 @@ export class OptimisticMutationStrategy {
     }
   }
 
-  private getInvalidationStrategy() {
+  getInvalidationStrategy() {
     return (
       this.mutationOptions?.invalidationStrategy ??
       this.collectionOptions.invalidationStrategy
     );
   }
 
-  private getMutationErrorStrategy() {
+  getMutationErrorStrategy() {
     return (
       this.mutationOptions?.onMutationErrorStrategy ??
       this.collectionOptions.onMutationErrorStrategy
     );
   }
 
-  private invalidateCollectionRelatedQueries() {
+  invalidateCollectionRelatedQueries() {
     this.queryClient.invalidateQueries({ queryKey: [this.collectionName] });
   }
 
-  private invalidateEntityRelatedQueries() {
+  invalidateEntityRelatedQueries() {
     const cache = this.queryClient.getQueryCache();
 
     for (const hash of this.entity.queryHashes) {
