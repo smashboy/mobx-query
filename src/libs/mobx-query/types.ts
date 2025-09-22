@@ -85,6 +85,12 @@ export interface UseDeleteMutationHookOptions<
 > extends UseMutationHookCommonOptions<void, TError, void, TContext>,
     OptimisticMutationStrategyOptions {}
 
+export interface UseCreateMutationHookOptions<
+  TError = DefaultError,
+  TContext = unknown
+> extends UseMutationHookCommonOptions<void, TError, void, TContext>,
+    OptimisticMutationStrategyOptions {}
+
 export interface UseUpdateMutationHookOptions<
   TError = DefaultError,
   TContext = unknown

@@ -94,27 +94,35 @@ export abstract class EntityCollection<
     return entities;
   }
 
-  createSuspenseEntityQuery<A = unknown, TError = DefaultError>(
+  protected createSuspenseEntityQuery<A = unknown, TError = DefaultError>(
     queryFn: UseEntityQueryFunction<A, TData>
   ) {
     return this.hooksManager.createSuspenseEntityQuery<A, TError>(queryFn);
   }
 
-  createSuspenseEntityListQuery<A = unknown, TError = DefaultError>(
+  protected createSuspenseEntityListQuery<A = unknown, TError = DefaultError>(
     queryFn: UseEntityListQueryFunction<A, TData>
   ) {
     return this.hooksManager.createSuspenseEntityListQuery<A, TError>(queryFn);
   }
 
-  useCreateMutation<TInput, TError = DefaultError, TContext = unknown>(
+  protected useCreateMutation<
+    TInput,
+    TError = DefaultError,
+    TContext = unknown
+  >(
     mutationFn: (input: TInput) => Promise<void>,
     mapInput: CreateEntityInputMapCallback<TInput, TData>,
     options?: UseDeleteMutationHookOptions<TError, TContext>
   ) {
-    return this.hooksManager.useCreateMutation(mutationFn, mapInput, options);
+    return this.hooksManager.useCreateMutation<TInput, TError, TContext>(
+      mutationFn,
+      mapInput,
+      options
+    );
   }
 
-  useDeleteMutation<TError = DefaultError, TContext = unknown>(
+  protected useDeleteMutation<TError = DefaultError, TContext = unknown>(
     entity: THydratedEntity,
     mutationFn: (entity: THydratedEntity) => Promise<void>,
     options?: UseDeleteMutationHookOptions<TError, TContext>

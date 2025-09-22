@@ -16,6 +16,7 @@ import type {
   GenerateEntityIdCallback,
   UseDeleteMutationHookOptions,
   OptimisticMutationStrategyOptions,
+  UseCreateMutationHookOptions,
 } from "./types";
 import { action } from "mobx";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
@@ -245,7 +246,7 @@ export class CollectionHooksManager<
   useCreateMutation<TInput, TError = DefaultError, TContext = unknown>(
     mutationFn: (input: TInput) => Promise<void>,
     mapInput: CreateEntityInputMapCallback<TInput, TData>,
-    options?: UseDeleteMutationHookOptions<TError, TContext>
+    options?: UseCreateMutationHookOptions<TError, TContext>
   ) {
     const mutation = useMutation<
       void,
