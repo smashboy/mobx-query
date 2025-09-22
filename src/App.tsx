@@ -5,7 +5,15 @@ import { UsersList } from "./modules/users/components/UsersList";
 const Users = () => {
   const users = usersCollection.getAllUsers.useEntityListQuery(void 0);
 
-  return <UsersList users={users} />;
+  const handleInvalidateUsersQuery = () =>
+    usersCollection.getAllUsers.invalidate();
+
+  return (
+    <>
+      <button onClick={handleInvalidateUsersQuery}>Invalidate</button>
+      <UsersList users={users} />
+    </>
+  );
 };
 
 const App = () => {

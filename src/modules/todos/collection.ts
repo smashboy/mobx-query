@@ -4,6 +4,7 @@ import { queryClient } from "../../libs/react-query";
 import { deleteTodo, getTodosByUserId } from "../../api/todos";
 import { EntityCollection } from "../../libs/mobx-query/EntityCollection";
 import type { EntityHydrated } from "../../libs/mobx-query/Entity";
+import { wait } from "../../utils";
 
 export class Todo {
   id: number;
@@ -37,6 +38,21 @@ export class TodosCollection extends EntityCollection<TodoDTO, Todo> {
 
   useDeleteTodoMutation(entity: TodoHydrated) {
     return this.useDeleteMutation(entity, (entity) => deleteTodo(entity.id));
+  }
+
+  useCreateTodoMutation() {
+    return this.useCreateMutation(
+      async function createTodo(newTodo: { title: string; userId: number }) {
+        await wait(1500);
+      },
+      (input, generatedId) => ({
+        // @ts-expect-error: todo type
+        id: generatedId,
+        title: input.title,
+        userId: input.userId,
+        completed: false,
+      })
+    );
   }
 }
 
