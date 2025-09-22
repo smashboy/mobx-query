@@ -177,14 +177,9 @@ export class CollectionHooksManager<
     const baseQueryKeyHash = hashKey(this.createQueryBaseKey(queryFn.name));
 
     const handleQueryFn = async (args: TArguments, queryKey: unknown[]) => {
-      try {
-        const data = await queryFn(args);
-        this.collectionManger.setEntities(data, hashKey(queryKey));
-        return data.map((item) => this.collectionManger.getEntityId(item));
-      } catch (error) {
-        console.error(error);
-        return [];
-      }
+      const data = await queryFn(args);
+      this.collectionManger.setEntities(data, hashKey(queryKey));
+      return data.map((item) => this.collectionManger.getEntityId(item));
     };
 
     return {
