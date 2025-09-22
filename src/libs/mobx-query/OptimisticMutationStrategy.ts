@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { action } from "mobx";
 import type { EntityState, OptimisticMutationStrategyOptions } from "./types";
+import { invalidateQueryByHash } from "./utils";
 
 export interface EntityLike {
   _removeQueryHash: (hash: string) => void;
@@ -87,15 +88,9 @@ export class OptimisticMutationStrategy {
     const cache = this.queryClient.getQueryCache();
 
     for (const hash of this.entity.queryHashes) {
-      const query = cache.get(hash);
-      if (query) {
-        query.invalidate();
-        if (query.isActive()) {
-          query.fetch();
-        }
-      } else {
-        this.entity._removeQueryHash(hash);
-      }
+      invalidateQueryByHash(hash, cache, () =>
+        this.entity._removeQueryHash(hash)
+      );
     }
   }
 }

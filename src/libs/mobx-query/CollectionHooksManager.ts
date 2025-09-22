@@ -20,6 +20,7 @@ import type {
 import { action } from "mobx";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
 import { CollectionIdGenerator } from "./CollectionIdGenerator";
+import { invalidateQueryByHash } from "./utils";
 
 export interface CreateSuspenseEntityQueryReturnCommon<TArguments = unknown> {
   invalidate: (args?: TArguments) => void;
@@ -153,7 +154,11 @@ export class CollectionHooksManager<
           queryFn: () => handleQueryFn(args, queryKey),
         });
       },
-      invalidate: (args?: TArguments) => {},
+      invalidate: (args?: TArguments) =>
+        invalidateQueryByHash(
+          hashKey(this.createQueryKey(queryFn.name, args)),
+          this.queryClient.getQueryCache()
+        ),
     };
   }
 
@@ -234,7 +239,11 @@ export class CollectionHooksManager<
           queryFn: () => handleQueryFn(args, queryKey),
         });
       },
-      invalidate: (args?: TArguments) => {},
+      invalidate: (args?: TArguments) =>
+        invalidateQueryByHash(
+          hashKey(this.createQueryKey(queryFn.name, args)),
+          this.queryClient.getQueryCache()
+        ),
     };
   }
 
