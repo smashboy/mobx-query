@@ -1,3 +1,5 @@
+# DISCLAIMER: This project is still in development and I don't know when I'm going to finish it, but still feel free to check it out.
+
 # mobx-query
 
 **Combine the best of react-query and mobx** — mobx-query provides a thin integration layer that uses React Query for fetching/invalidations and MobX for storing and mutating observable entities. It supports optimistic mutations with automatic rollbacks on error and automatic invalidation of dependent queries on success.
