@@ -1395,11 +1395,6 @@ mobx-react-observer@^1.1.0:
     mobx-react-lite "^4.1.0"
     swc-plugin-observing-components "^0.2.0"
 
-mobx-utils@^6.1.1:
-  version "6.1.1"
-  resolved "https://registry.yarnpkg.com/mobx-utils/-/mobx-utils-6.1.1.tgz#61c66563e7646fb75462c189f4110a76d2e35768"
-  integrity sha512-ZR4tOKucWAHOdMjqElRl2BEvrzK7duuDdKmsbEbt2kzgVpuLuoYLiDCjc3QwWQl8CmOlxPgaZQpZ7emwNqPkIg==
-
 mobx@^6.13.7:
   version "6.13.7"
   resolved "https://registry.yarnpkg.com/mobx/-/mobx-6.13.7.tgz#70e5dda7a45da947f773b3cd3b065dfe7c8a75de"

@@ -3,6 +3,7 @@ import type {
   UseMutationOptions,
   UseSuspenseQueryOptions,
 } from "@tanstack/react-query";
+import type { EntityHydratedInternal } from "./Entity";
 
 export type EntityId = string | number;
 export type EntityState = "pending" | "confirmed" | "failed";
@@ -18,7 +19,7 @@ export type GenerateEntityIdCallback = () => EntityId;
 export type GetEntityIdCallback<TData = unknown> = (data: TData) => EntityId;
 export type EntityHydrationCallback<TData = unknown, THydrated = unknown> = (
   data: TData
-) => THydrated;
+) => EntityHydratedInternal<THydrated>;
 export type CreateEntityInputMapCallback<TInput, TData> = (
   input: TInput,
   clientId: string

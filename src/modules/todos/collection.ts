@@ -3,16 +3,17 @@ import type { TodoDTO } from "../../api/types";
 import { queryClient } from "../../libs/react-query";
 import { deleteTodo, getTodosByUserId } from "../../api/todos";
 import { EntityCollection } from "../../libs/mobx-query/EntityCollection";
-import type { EntityHydrated } from "../../libs/mobx-query/Entity";
+import { Entity, type EntityHydrated } from "../../libs/mobx-query/Entity";
 import { wait } from "../../utils";
 
-export class Todo {
+export class Todo extends Entity {
   id: number;
   userId: number;
   @observable accessor title: string;
   @observable accessor isCompleted: boolean;
 
   constructor(data: TodoDTO) {
+    super();
     this.id = data.id;
     this.userId = data.userId;
     this.title = data.title;

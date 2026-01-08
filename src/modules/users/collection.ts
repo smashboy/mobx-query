@@ -3,9 +3,9 @@ import type { UserDTO } from "../../api/types";
 import { deleteUser, getAllUsers, getUserById } from "../../api/users";
 import { queryClient } from "../../libs/react-query";
 import { EntityCollection } from "../../libs/mobx-query/EntityCollection";
-import type { EntityHydrated } from "../../libs/mobx-query/Entity";
+import { Entity, type EntityHydrated } from "../../libs/mobx-query/Entity";
 
-export class User {
+export class User extends Entity {
   id: number;
   @observable accessor name: string;
   @observable accessor username: string;
@@ -13,6 +13,7 @@ export class User {
   @observable accessor phone: string;
 
   constructor(data: UserDTO) {
+    super();
     this.id = data.id;
     this.name = data.name;
     this.username = data.username;

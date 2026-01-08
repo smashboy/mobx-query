@@ -4,8 +4,7 @@ import {
   type DefaultError,
   type QueryClient,
 } from "@tanstack/react-query";
-import { observable } from "mobx";
-import { ViewModel } from "mobx-utils";
+import { action, computed, observable, observe } from "mobx";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
 import type {
   EntityState,
@@ -13,9 +12,9 @@ import type {
   UseUpdateMutationHookOptions,
 } from "./types";
 
-export type EntityConstructor<THydrated = unknown> = typeof Entity<THydrated>;
+export type EntityConstructor = typeof Entity;
 
-export type EntityHydratedInternal<THydrated> = THydrated & Entity<THydrated>;
+export type EntityHydratedInternal<THydrated> = THydrated & Entity;
 export type EntityHydrated<T = unknown> = Omit<
   EntityHydratedInternal<T>,
   | "_newEntity"
@@ -38,27 +37,26 @@ export interface EntityEvents {
   onAllQueryHashesRemoved: (entityId: string) => void;
 }
 
-export class Entity<THydrated = unknown> extends ViewModel<THydrated> {
-  entityId: string;
+export class Entity {
+  entityId!: string;
+  queryHashes = new Set<string>();
+
+  private queryClient!: QueryClient;
+  private collectionName!: string;
+  private events!: EntityEvents;
+  private collectionOptimisticMutationStrategyOptions?: OptimisticMutationStrategyOptions;
+
   @observable accessor state: EntityState = "confirmed";
+  @observable private accessor _isDirty = false;
 
-  private readonly queryClient: QueryClient;
-  private readonly collectionName: string;
-  private readonly events: EntityEvents;
-  private readonly collectionOptimisticMutationStrategyOptions?: OptimisticMutationStrategyOptions;
-
-  readonly queryHashes = new Set<string>();
-
-  constructor(
+  _init(
     entityId: string,
-    entity: THydrated,
     collectionName: string,
     queryClient: QueryClient,
     queryHashes: string[],
     events: EntityEvents,
     collectionOptimisticMutationStrategyOptions?: OptimisticMutationStrategyOptions
   ) {
-    super(entity);
     this.entityId = entityId;
     this.collectionName = collectionName;
     this.queryClient = queryClient;
@@ -68,7 +66,23 @@ export class Entity<THydrated = unknown> extends ViewModel<THydrated> {
     for (const hash of queryHashes) {
       this.queryHashes.add(hash);
     }
+
+    observe(this, (change) => {
+      if (
+        change.type === "update" &&
+        change.name !== "_isDirty" &&
+        this._isDirty === false
+      ) {
+        this._isDirty = true;
+      }
+    });
   }
+
+  @computed get isDirty() {
+    return this._isDirty;
+  }
+
+  @action reset() {}
 
   useUpdateMutation<TError = DefaultError, TContext = unknown>(
     mutationFn: (draft: this) => Promise<void>,
@@ -124,22 +138,6 @@ export class Entity<THydrated = unknown> extends ViewModel<THydrated> {
     };
 
     return save;
-  }
-
-  _newEntity(data: THydrated, queryHashes: string[]) {
-    for (const hash of this.queryHashes) {
-      queryHashes.push(hash);
-    }
-
-    return new Entity(
-      this.entityId,
-      data,
-      this.collectionName,
-      this.queryClient,
-      queryHashes,
-      this.events,
-      this.collectionOptimisticMutationStrategyOptions
-    );
   }
 
   _removeQueryHash(hash: string) {

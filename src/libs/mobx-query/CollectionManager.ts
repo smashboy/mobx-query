@@ -1,4 +1,4 @@
-import { action, observable } from "mobx";
+import { action, observable, observe } from "mobx";
 import { Entity, type EntityHydratedInternal } from "./Entity";
 import type { QueryClient } from "@tanstack/react-query";
 import type {
@@ -71,18 +71,26 @@ export class CollectionManager<
     }
 
     if (entity) {
-      const updatedEntity = entity._newEntity(
-        this.hydrateEntityCallback(entityData),
-        [queryHash]
+      const updatedEntity = this.hydrateEntityCallback(entityData);
+      updatedEntity._init(
+        id,
+        this.collectionName,
+        this.queryClient,
+        Array.from(new Set([queryHash, ...entity.queryHashes])),
+        {
+          onAllQueryHashesRemoved: (entityId: string) =>
+            this.deleteEntity(entityId),
+        },
+        this.collectionOptimisticMutationStrategyOptions
       );
 
       this.collection.set(id, updatedEntity as never);
       return updatedEntity;
     }
 
-    const newEntity = new Entity(
+    const newEntity = this.hydrateEntityCallback(entityData);
+    newEntity._init(
       id,
-      this.hydrateEntityCallback(entityData),
       this.collectionName,
       this.queryClient,
       [queryHash],
