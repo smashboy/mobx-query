@@ -59,14 +59,14 @@ export class CollectionManager<
 
   @action setEntity(
     entityData: TData,
-    queryHash: string,
+    queryHash?: string,
     clearQueryHashes?: boolean
   ) {
     const id = this.getEntityId(entityData);
 
     const entity = this.collection.get(id);
 
-    if (clearQueryHashes) {
+    if (clearQueryHashes && queryHash) {
       this.removeQueryHashFromAllEntities(queryHash);
     }
 
@@ -76,7 +76,9 @@ export class CollectionManager<
         id,
         this.collectionName,
         this.queryClient,
-        Array.from(new Set([queryHash, ...entity.queryHashes])),
+        queryHash
+          ? Array.from([queryHash, ...entity.queryHashes])
+          : Array.from(entity.queryHashes),
         {
           onAllQueryHashesRemoved: (entityId: string) =>
             this.deleteEntity(entityId),
@@ -93,7 +95,7 @@ export class CollectionManager<
       id,
       this.collectionName,
       this.queryClient,
-      [queryHash],
+      queryHash ? [queryHash] : [],
       {
         onAllQueryHashesRemoved: (entityId: string) =>
           this.deleteEntity(entityId),
