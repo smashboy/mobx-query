@@ -295,7 +295,7 @@ export class CollectionHooksManager<
     const id = this.collectionIdGenerator.generateEntityId();
     const data = mapInput(input, id);
     this.collectionManger.clientOnlyEntityIds.add(id);
-    const entity = this.collectionManger.setEntity(data, id);
+    const entity = this.collectionManger.setEntity(data);
 
     const mutationStrategy = new OptimisticMutationStrategy(
       entity,
@@ -321,6 +321,7 @@ export class CollectionHooksManager<
     onError?: () => void
   ) {
     const strategy = mutationStrategy.getMutationErrorStrategy();
+    mutationStrategy.onError();
 
     if (strategy === "rollback") {
       this.collectionManger.deleteEntity(entityId);
