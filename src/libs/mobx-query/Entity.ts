@@ -4,7 +4,13 @@ import {
   type DefaultError,
   type QueryClient,
 } from "@tanstack/react-query";
-import { action, computed, observable, observe } from "mobx";
+import {
+  action,
+  computed,
+  observable,
+  observe,
+  type IObjectDidChange,
+} from "mobx";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
 import type {
   EntityState,
@@ -49,6 +55,9 @@ export class Entity {
   @observable accessor state: EntityState = "confirmed";
   @observable private accessor _isDirty = false;
 
+  private readonly initValuesSnapshot: Map<string | number | symbol, unknown> =
+    new Map();
+
   _init(
     entityId: string,
     collectionName: string,
@@ -67,24 +76,46 @@ export class Entity {
       this.queryHashes.add(hash);
     }
 
-    observe(this, (change) => {
-      if (
-        change.type === "update" &&
-        change.name !== "_isDirty" &&
-        this._isDirty === false
-      ) {
-        this._isDirty = true;
-      }
-    });
+    observe(this, (change) => this.onObservableChange(change));
   }
 
   @computed get isDirty() {
     return this._isDirty;
   }
 
-  @action reset() {}
+  @action private onObservableChange(change: IObjectDidChange) {
+    if (change.type !== "update") {
+      return;
+    }
 
-  useUpdateMutation<TError = DefaultError, TContext = unknown>(
+    // // @ts-expect-error: unkown field
+    // const destination = this[change.name];
+
+    // if (!destination) {
+    //   return;
+    // }
+
+    if (!this.initValuesSnapshot.has(change.name)) {
+      // console.log(change.name, destination, isComputed(destination));
+      this.initValuesSnapshot.set(change.name, change.oldValue);
+    }
+
+    if (change.name !== "_isDirty" && this._isDirty === false) {
+      this._isDirty = true;
+    }
+  }
+
+  @action reset() {
+    for (const [key, value] of this.initValuesSnapshot.entries()) {
+      // @ts-expect-error: unkown field
+      this[key] = value;
+    }
+
+    this._isDirty = false;
+    this.initValuesSnapshot.clear();
+  }
+
+  protected useUpdateMutation<TError = DefaultError, TContext = unknown>(
     mutationFn: (draft: this) => Promise<void>,
     options?: UseUpdateMutationHookOptions<TError, TContext>
   ) {
@@ -128,13 +159,19 @@ export class Entity {
     });
 
     const save = () => {
-      if (this.isDirty) {
-        mutation.mutate();
-      } else {
-        console.warn(
+      if (!this.isDirty) {
+        return console.warn(
           "Entity values has not been changed, mutation is skipped."
         );
       }
+
+      if (this.state === "pending") {
+        return console.warn(
+          "Entity update mutation is already in progress, new mutation is skipped."
+        );
+      }
+
+      mutation.mutate();
     };
 
     return save;

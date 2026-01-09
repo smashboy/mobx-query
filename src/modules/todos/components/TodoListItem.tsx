@@ -1,13 +1,9 @@
-import { wait } from "../../../utils";
 import { todosCollection, type TodoHydrated } from "../collection";
 
 export const TodoListItem: React.FC<{ todo: TodoHydrated }> = ({ todo }) => {
   const deleteTodo = todosCollection.useDeleteTodoMutation(todo);
 
-  const update = todo.useUpdateMutation(async function updateTodo() {
-    await wait(1500);
-    throw new Error("Oops");
-  });
+  const update = todo.useUpdateTodo();
 
   const handleEditTitle = () => {
     const value = prompt("Update title", todo.title);

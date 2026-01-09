@@ -24,6 +24,13 @@ export class Todo extends Entity {
   setTitle(title: string) {
     this.title = title;
   }
+
+  useUpdateTodo() {
+    return this.useUpdateMutation(async function updateTodo() {
+      await wait(1500);
+      throw new Error("Oops");
+    });
+  }
 }
 
 export class TodosCollection extends EntityCollection<TodoDTO, Todo> {

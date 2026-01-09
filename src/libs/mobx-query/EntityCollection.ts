@@ -49,7 +49,8 @@ export abstract class EntityCollection<
       collectionName,
       queryClient,
       options.hydrate,
-      options.getEntityId
+      options.getEntityId,
+      options.strategyOptions
     );
 
     this.hooksManager = new CollectionHooksManager(

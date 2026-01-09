@@ -1,5 +1,5 @@
-import { action, observable, observe } from "mobx";
-import { Entity, type EntityHydratedInternal } from "./Entity";
+import { action, observable } from "mobx";
+import { type EntityHydratedInternal } from "./Entity";
 import type { QueryClient } from "@tanstack/react-query";
 import type {
   EntityHydrationCallback,

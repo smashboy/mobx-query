@@ -1,4 +1,3 @@
-import { wait } from "../../../utils";
 import { todosCollection, type TodoHydrated } from "../../todos/collection";
 import { TodosList } from "../../todos/components/TodosList";
 import { usersCollection } from "../collection";
@@ -21,9 +20,7 @@ function getUserRelatedClientOnlyTodos(
 export const UserProfile: React.FC<{ userId: number }> = ({ userId }) => {
   const user = usersCollection.getUserById.useEntityQuery(userId);
 
-  const updateUser = user.useUpdateMutation(async function updateUser() {
-    await wait(1500);
-  });
+  const updateUser = user.useUpdateProfile();
 
   const todos = todosCollection.getTodosByUserId.useEntityListQuery(userId);
   const clientOnlyTodos = getUserRelatedClientOnlyTodos(

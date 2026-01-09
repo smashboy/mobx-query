@@ -4,6 +4,7 @@ import { deleteUser, getAllUsers, getUserById } from "../../api/users";
 import { queryClient } from "../../libs/react-query";
 import { EntityCollection } from "../../libs/mobx-query/EntityCollection";
 import { Entity, type EntityHydrated } from "../../libs/mobx-query/Entity";
+import { wait } from "../../utils";
 
 export class User extends Entity {
   id: number;
@@ -25,6 +26,12 @@ export class User extends Entity {
   get displayUsername() {
     return `@${this.username}`;
   }
+
+  useUpdateProfile() {
+    return this.useUpdateMutation(async function updateUser() {
+      await wait(1500);
+    });
+  }
 }
 
 export class UsersCollection extends EntityCollection<UserDTO, User> {
@@ -34,6 +41,9 @@ export class UsersCollection extends EntityCollection<UserDTO, User> {
     super("users", queryClient, {
       getEntityId: (user) => user.id,
       hydrate: (user) => new User(user),
+      strategyOptions: {
+        onMutationErrorStrategy: "keep",
+      },
     });
   }
 
@@ -45,8 +55,7 @@ export class UsersCollection extends EntityCollection<UserDTO, User> {
     return this.useDeleteMutation(entity, (entity) => deleteUser(entity.id));
   }
 
-  @action
-  selectUser(user: UserHydrated | null) {
+  @action selectUser(user: UserHydrated | null) {
     if (user) {
       this.selectedUserId = user.id;
     } else {
