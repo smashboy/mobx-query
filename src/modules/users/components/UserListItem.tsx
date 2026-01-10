@@ -1,10 +1,11 @@
+import { useMutation } from "@tanstack/react-query";
 import { todosCollection } from "../../todos/collection";
 import { usersCollection, type UserHydrated } from "../collection";
+import { wait } from "../../../utils";
 
 export const UserListItem: React.FC<{ user: UserHydrated }> = ({ user }) => {
   const deleteUser = usersCollection.useDeleteUserMutation(user);
 
-  const handleDeleteUser = () => deleteUser();
   const handleSelectProfile = () => usersCollection.selectUser(user);
   const handlePrefetchProfile = () => {
     usersCollection.getUserById.prefetch(user.id);
@@ -21,7 +22,7 @@ export const UserListItem: React.FC<{ user: UserHydrated }> = ({ user }) => {
       >
         Open Profile
       </button>
-      <button style={{ marginLeft: 10 }} onClick={handleDeleteUser}>
+      <button style={{ marginLeft: 10 }} onClick={deleteUser}>
         Delete
       </button>
     </li>
