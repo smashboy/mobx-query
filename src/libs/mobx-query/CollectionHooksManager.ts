@@ -321,7 +321,7 @@ export class CollectionHooksManager<
     onError?: () => void
   ) {
     const strategy = mutationStrategy.getMutationErrorStrategy();
-    mutationStrategy.onError();
+    mutationStrategy.onError(true);
 
     if (strategy === "rollback") {
       this.collectionManger.deleteEntity(entityId);

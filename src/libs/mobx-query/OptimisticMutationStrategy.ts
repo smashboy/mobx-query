@@ -57,11 +57,11 @@ export class OptimisticMutationStrategy {
     }
   }
 
-  @action onError() {
+  @action onError(ignoreReset: boolean = false) {
     this.entity.state = "failed";
     const strategy = this.getMutationErrorStrategy();
 
-    if (strategy === "rollback") {
+    if (strategy === "rollback" && !ignoreReset) {
       this.entity.reset();
     }
   }
