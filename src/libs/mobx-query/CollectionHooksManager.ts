@@ -17,6 +17,13 @@ import type {
   UseDeleteMutationHookOptions,
   OptimisticMutationStrategyOptions,
   UseCreateMutationHookOptions,
+  CreateMutationContext,
+  CreateMutationOnMutateCallback,
+  CreateMutationOnSuccessCallback,
+  CreateMutationOnErrorCallback,
+  DeleteMutationOnMutateCallback,
+  DeleteMutationOnSuccessCallback,
+  DeleteMutationOnErrorCallback,
 } from "./types";
 import { action } from "mobx";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
@@ -246,39 +253,56 @@ export class CollectionHooksManager<
   useCreateMutation<TInput, TError = DefaultError, TContext = unknown>(
     mutationFn: (input: TInput) => Promise<void>,
     mapInput: CreateEntityInputMapCallback<TInput, TData>,
-    options?: UseCreateMutationHookOptions<TError, TContext>
+    options?: UseCreateMutationHookOptions<
+      THydratedEntity,
+      TError,
+      TContext,
+      TInput
+    >
   ) {
     const mutation = useMutation<
       void,
-      DefaultError,
+      TError,
       TInput,
-      { entityId: string; mutationStrategy: OptimisticMutationStrategy }
+      CreateMutationContext<
+        TInput,
+        TContext,
+        THydratedEntityInternal,
+        OptimisticMutationStrategy
+      >
     >({
       mutationFn: (input) => mutationFn(input),
       onMutate: (input) =>
         this.onCreateMutationMutate(input, mapInput, options?.onMutate),
-      onSuccess: (_data, _vars, mutationResult) =>
-        this.onCreateMutationSuccess(
-          mutationResult!.entityId,
-          options?.onSuccess
-        ),
-      onError: (_err, _vars, mutationResult) => {
-        this.onCreateMutationError(
-          mutationResult!.entityId,
-          mutationResult!.mutationStrategy,
-          options?.onError
-        );
+      onSuccess: (_data, input, context) => {
+        // onCreateMutationMutate always returns a context object, so context is guaranteed to exist here
+        // If onMutate throws, React Query calls onError instead of onSuccess
+        if (!context) {
+          console.error(
+            "onCreateMutationSuccess called without context - this should not happen"
+          );
+          return;
+        }
+        this.onCreateMutationSuccess(input, context, options?.onSuccess);
       },
-      onSettled: () => options?.onSettled?.(),
+      onError: (error, input, context) =>
+        this.onCreateMutationError(error, input, context, options?.onError),
+      onSettled: (_data, error, input, context) => {
+        if (options?.onSettled && context) {
+          options.onSettled(
+            input,
+            context.entity as unknown as THydratedEntity,
+            error ?? null,
+            context.userContext
+          );
+        }
+      },
       gcTime: options?.gcTime,
       meta: options?.meta,
       networkMode: options?.networkMode,
-      // @ts-expect-error: todo
       retry: options?.retry,
-      // @ts-expect-error: todo
       retryDelay: options?.retryDelay,
       scope: options?.scope,
-      // @ts-expect-error: todo
       throwOnError: options?.throwOnError,
     });
 
@@ -287,15 +311,24 @@ export class CollectionHooksManager<
     return create;
   }
 
-  @action private onCreateMutationMutate<TInput>(
+  @action private async onCreateMutationMutate<TInput, TContext = unknown>(
     input: TInput,
     mapInput: CreateEntityInputMapCallback<TInput, TData>,
-    onMutate?: () => void
-  ) {
+    onMutate?: CreateMutationOnMutateCallback<THydratedEntity, TContext, TInput>
+  ): Promise<
+    CreateMutationContext<
+      TInput,
+      TContext,
+      THydratedEntityInternal,
+      OptimisticMutationStrategy
+    >
+  > {
     const id = this.collectionIdGenerator.generateEntityId();
     const data = mapInput(input, id);
     this.collectionManger.clientOnlyEntityIds.add(id);
-    const entity = this.collectionManger.setEntity(data);
+    const entity = this.collectionManger.setEntity(
+      data
+    ) as THydratedEntityInternal;
 
     const mutationStrategy = new OptimisticMutationStrategy(
       entity,
@@ -305,35 +338,90 @@ export class CollectionHooksManager<
     );
 
     mutationStrategy.onMutate();
-    onMutate?.();
 
-    return { entityId: id, mutationStrategy };
+    const entityAsHydrated = entity as unknown as THydratedEntity;
+    const userContext = onMutate
+      ? (await onMutate(input, entityAsHydrated)) ?? undefined
+      : undefined;
+
+    return {
+      entityId: id,
+      input,
+      entity,
+      mutationStrategy,
+      userContext,
+    };
   }
 
-  private onCreateMutationSuccess(entityId: string, onSuccess?: () => void) {
-    this.collectionManger.deleteEntity(entityId);
-    onSuccess?.();
-  }
-
-  private onCreateMutationError(
-    entityId: string,
-    mutationStrategy: OptimisticMutationStrategy,
-    onError?: () => void
+  private onCreateMutationSuccess<TInput, TContext = unknown>(
+    input: TInput,
+    context: CreateMutationContext<
+      TInput,
+      TContext,
+      THydratedEntityInternal,
+      OptimisticMutationStrategy
+    >,
+    onSuccess?: CreateMutationOnSuccessCallback<
+      THydratedEntity,
+      TContext,
+      TInput
+    >
   ) {
-    const strategy = mutationStrategy.getMutationErrorStrategy();
-    mutationStrategy.onError(true);
+    this.collectionManger.deleteEntity(context.entityId);
+    context.mutationStrategy.onSuccess();
+    onSuccess?.(
+      input,
+      context.entity as unknown as THydratedEntity,
+      context.userContext
+    );
+  }
 
-    if (strategy === "rollback") {
-      this.collectionManger.deleteEntity(entityId);
+  private onCreateMutationError<
+    TInput,
+    TError = DefaultError,
+    TContext = unknown
+  >(
+    error: TError,
+    input: TInput,
+    context:
+      | CreateMutationContext<
+          TInput,
+          TContext,
+          THydratedEntityInternal,
+          OptimisticMutationStrategy
+        >
+      | undefined,
+    onError?: CreateMutationOnErrorCallback<
+      THydratedEntity,
+      TError,
+      TContext,
+      TInput
+    >
+  ) {
+    if (!context) {
+      // Error happened before onMutate completed
+      return;
     }
 
-    onError?.();
+    const strategy = context.mutationStrategy.getMutationErrorStrategy();
+    context.mutationStrategy.onError();
+
+    if (strategy === "rollback") {
+      this.collectionManger.deleteEntity(context.entityId);
+    }
+
+    onError?.(
+      error,
+      input,
+      context.entity as unknown as THydratedEntity,
+      context.userContext
+    );
   }
 
   useDeleteMutation<TError = DefaultError, TContext = unknown>(
     entity: THydratedEntity,
     mutationFn: (entity: THydratedEntity) => Promise<void>,
-    options?: UseDeleteMutationHookOptions<TError, TContext>
+    options?: UseDeleteMutationHookOptions<THydratedEntity, TError, TContext>
   ) {
     const mutationStrategy = new OptimisticMutationStrategy(
       entity as unknown as THydratedEntityInternal,
@@ -346,23 +434,31 @@ export class CollectionHooksManager<
       }
     );
 
-    const mutation = useMutation({
+    const mutation = useMutation<void, TError, void, TContext | undefined>({
       mutationFn: () => mutationFn(entity),
-      onMutate: () =>
+      onMutate: async () =>
         this.onDeleteMutationMutate(
           entity,
           mutationStrategy,
           options?.onMutate
         ),
-      onSuccess: () =>
+      onSuccess: (_data, _variables, context) =>
         this.onDeleteMutationSuccess(
           entity,
           mutationStrategy,
+          context,
           options?.onSuccess
         ),
-      onError: () =>
-        this.onDeleteMutationError(entity, mutationStrategy, options?.onError),
-      onSettled: () => options?.onSettled?.(),
+      onError: (error, _variables, context) =>
+        this.onDeleteMutationError(
+          entity,
+          mutationStrategy,
+          error,
+          context,
+          options?.onError
+        ),
+      onSettled: (_data, error, _variables, context) =>
+        options?.onSettled?.(entity, error ?? null, context),
       gcTime: options?.gcTime,
       meta: options?.meta,
       networkMode: options?.networkMode,
@@ -377,34 +473,45 @@ export class CollectionHooksManager<
     return deleteEntity;
   }
 
-  @action onDeleteMutationMutate(
+  @action async onDeleteMutationMutate<TContext = unknown>(
     entity: THydratedEntity,
     mutationStrategy: OptimisticMutationStrategy,
-    onMutate?: () => void
-  ) {
+    onMutate?: DeleteMutationOnMutateCallback<THydratedEntity, TContext>
+  ): Promise<TContext | undefined> {
     this.collectionManger.deletedRecordIds.add(entity.entityId);
     mutationStrategy.onMutate();
-    onMutate?.();
+
+    if (onMutate) {
+      return (await onMutate(entity)) ?? undefined;
+    }
+
+    return undefined;
   }
 
-  private onDeleteMutationSuccess(
+  private onDeleteMutationSuccess<TContext = unknown>(
     entity: THydratedEntity,
     mutationStrategy: OptimisticMutationStrategy,
-    onSuccess?: () => void
+    context: TContext | undefined,
+    onSuccess?: DeleteMutationOnSuccessCallback<THydratedEntity, TContext>
   ) {
     this.collectionManger.deleteEntity(entity.entityId);
     mutationStrategy.onSuccess();
-    onSuccess?.();
+    onSuccess?.(entity, context);
   }
 
-  @action private onDeleteMutationError(
+  @action private onDeleteMutationError<
+    TError = DefaultError,
+    TContext = unknown
+  >(
     entity: THydratedEntity,
     mutationStrategy: OptimisticMutationStrategy,
-    onError?: () => void
+    error: TError,
+    context: TContext | undefined,
+    onError?: DeleteMutationOnErrorCallback<THydratedEntity, TError, TContext>
   ) {
     this.collectionManger.deletedRecordIds.delete(entity.entityId);
     mutationStrategy.onError();
-    onError?.();
+    onError?.(error, entity, context);
   }
 
   private createQueryKey<TArguments = unknown>(

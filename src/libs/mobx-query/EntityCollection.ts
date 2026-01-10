@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/rules-of-hooks */
 import { computed } from "mobx";
 import { type EntityHydrated, type EntityHydratedInternal } from "./Entity";
 import { type DefaultError, type QueryClient } from "@tanstack/react-query";
@@ -10,6 +9,7 @@ import type {
   GenerateEntityIdCallback,
   OptimisticMutationStrategyOptions,
   UseDeleteMutationHookOptions,
+  UseCreateMutationHookOptions,
   CreateEntityInputMapCallback,
 } from "./types";
 import { CollectionManager } from "./CollectionManager";
@@ -114,7 +114,12 @@ export abstract class EntityCollection<
   >(
     mutationFn: (input: TInput) => Promise<void>,
     mapInput: CreateEntityInputMapCallback<TInput, TData>,
-    options?: UseDeleteMutationHookOptions<TError, TContext>
+    options?: UseCreateMutationHookOptions<
+      THydratedEntity,
+      TError,
+      TContext,
+      TInput
+    >
   ) {
     return this.hooksManager.useCreateMutation<TInput, TError, TContext>(
       mutationFn,
@@ -126,12 +131,8 @@ export abstract class EntityCollection<
   protected useDeleteMutation<TError = DefaultError, TContext = unknown>(
     entity: THydratedEntity,
     mutationFn: (entity: THydratedEntity) => Promise<void>,
-    options?: UseDeleteMutationHookOptions<TError, TContext>
+    options?: UseDeleteMutationHookOptions<THydratedEntity, TError, TContext>
   ) {
-    return this.hooksManager.useDeleteMutation<TError, TContext>(
-      entity,
-      mutationFn,
-      options
-    );
+    return this.hooksManager.useDeleteMutation(entity, mutationFn, options);
   }
 }
