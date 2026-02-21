@@ -1,10 +1,10 @@
-import { type EntityConstructorAny, EntityCollection } from "../entity";
-import type { MQClientContextRegistered } from "./types";
+import type { EntityConstructorAny } from "../entity/Entity";
+import { EntityCollection } from "../entity/EntityCollection";
 import {
   OptimisticMutationErrorStrategy,
   OptimisticMutationInvalidationStrategy,
-} from "../mutations";
-
+} from "../mutations/constants";
+import type { MQClientContextRegistered } from "./types";
 export interface MQClientOptions {
   invalidationStrategy?: OptimisticMutationInvalidationStrategy;
   errorStrategy?: OptimisticMutationErrorStrategy;

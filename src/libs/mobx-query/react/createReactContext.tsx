@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { MQClient } from "../client";
+import type { MQClient } from "../client/MQClient";
 
 export function createReactContext<TMQClient extends MQClient<any>>() {
   const context = createContext<TMQClient | null>(null);

@@ -4,12 +4,12 @@ import type {
   UseMutationOptions,
 } from "@tanstack/react-query";
 import type { MQClientContextRegistered } from "../client/types";
-import type { EntityAny, EntityConstructorAny } from "../entity";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
 import type {
   OptimisticMutationErrorStrategy,
   OptimisticMutationInvalidationStrategy,
 } from "./constants";
+import type { EntityAny, EntityConstructorAny } from "../entity/Entity";
 
 export type MutationFn<TInput> = (
   input: TInput,

@@ -1,7 +1,7 @@
 import { type DefaultError, useQuery } from "@tanstack/react-query";
-import type { EntityConstructorAny } from "../entity";
 import type { UseQueryManyOptions } from "./types";
 import { QueryManyBase } from "./QueryManyBase";
+import type { EntityConstructorAny } from "../entity/Entity";
 
 export class QueryFragmentMany<
   TArguments = void,

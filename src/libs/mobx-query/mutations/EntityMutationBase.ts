@@ -1,4 +1,3 @@
-import type { EntityConstructorAny, EntityAny } from "../entity";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
 import type {
   EntityMutationCallbacks,
@@ -9,6 +8,7 @@ import type {
   MutationFunctionContext,
 } from "@tanstack/react-query";
 import { MutationBase } from "./MutationBase";
+import type { EntityAny, EntityConstructorAny } from "../entity/Entity";
 
 /**
  * Base class for mutations that operate ON an existing entity.

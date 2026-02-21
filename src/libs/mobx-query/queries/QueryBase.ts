@@ -1,6 +1,7 @@
 import { hashKey, useIsFetching } from "@tanstack/react-query";
-import { MQClientAccessor } from "../client";
-import type { EntityConstructorAny, EntityDataAny } from "../entity";
+import { MQClientAccessor } from "../client/MQClientAccessor";
+import type { EntityConstructorAny } from "../entity/Entity";
+import type { EntityDataAny } from "../entity/types";
 
 export abstract class QueryBase<TArguments = unknown> extends MQClientAccessor {
   constructor(

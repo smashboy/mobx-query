@@ -3,10 +3,10 @@ import {
   type MutationFunctionContext,
   useMutation,
 } from "@tanstack/react-query";
-import type { EntityConstructorAny } from "../entity";
 import type { UseEntityMutationHookOptions } from "./types";
 import { EntityMutationBase } from "./EntityMutationBase";
 import { action } from "mobx";
+import type { EntityConstructorAny } from "../entity/Entity";
 
 export class DeleteMutation<
   TEntityConstructor extends EntityConstructorAny,

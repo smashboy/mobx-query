@@ -1,4 +1,4 @@
-import type { EntityConstructorAny } from "../entity";
+import type { EntityConstructorAny } from "../entity/Entity";
 
 const ENTITY_ID_INCREMENTORS = new Map<string, number>();
 const CLIENT_ONLY_ENTITY_ID_PREFIX = "entityClientOnlyId";

@@ -1,6 +1,6 @@
-import type { EntityAny, EntityConstructorAny } from "../entity";
+import { MQClientAccessor } from "../client/MQClientAccessor";
+import type { EntityAny, EntityConstructorAny } from "../entity/Entity";
 import { EntityCollection } from "../entity/EntityCollection";
-import { MQClientAccessor } from "../client";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
 import type { OptimisticMutationStrategyOptions } from "./types";
 

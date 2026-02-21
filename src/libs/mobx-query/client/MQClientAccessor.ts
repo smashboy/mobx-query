@@ -5,8 +5,9 @@ import type {
   QueryClient,
 } from "@tanstack/react-query";
 import type { MQClientContextRegistered } from "./types";
-import type { EntityCollection, EntityConstructorAny } from "../entity";
-import type { MutationFn } from "../mutations";
+import type { EntityCollection } from "../entity/EntityCollection";
+import type { EntityConstructorAny } from "../entity/Entity";
+import type { MutationFn } from "../mutations/types";
 
 export abstract class MQClientAccessor {
   protected readonly queryClient: QueryClient;

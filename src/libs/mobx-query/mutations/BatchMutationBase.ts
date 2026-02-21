@@ -2,12 +2,13 @@ import type {
   DefaultError,
   MutationFunctionContext,
 } from "@tanstack/react-query";
-import type { EntityConstructorAny, EntityCollection } from "../entity";
 import type {
   BatchMutationInputInternal,
   UseBatchMutationHookOptions,
 } from "./types";
 import { MutationBase } from "./MutationBase";
+import type { EntityConstructorAny } from "../entity/Entity";
+import type { EntityCollection } from "../entity/EntityCollection";
 
 export class BatchMutationBase<
   TEntityConstructor extends EntityConstructorAny,

@@ -1,7 +1,7 @@
 import type { DefaultError, NetworkMode } from "@tanstack/react-query";
-import type { EntityConstructorAny } from "../entity";
 import type { MQClientContextRegistered } from "../client/types";
-import type { InferEntityData } from "../utils";
+import type { InferEntityData } from "../utils/types";
+import type { EntityConstructorAny } from "../entity/Entity";
 
 export type UseQueryManyFunction<
   TArguments,

@@ -1,7 +1,7 @@
 import { type DefaultError, useMutation } from "@tanstack/react-query";
-import type { EntityConstructorAny } from "../entity";
 import type { UseEntityMutationHookOptions } from "./types";
 import { EntityMutationBase } from "./EntityMutationBase";
+import type { EntityConstructorAny } from "../entity/Entity";
 
 export class UpdateMutation<
   TEntityConstructor extends EntityConstructorAny,

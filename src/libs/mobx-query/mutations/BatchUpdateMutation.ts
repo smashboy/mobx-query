@@ -1,10 +1,10 @@
 import { type DefaultError, useMutation } from "@tanstack/react-query";
-import type { EntityConstructorAny } from "../entity";
 import { BatchMutationBase } from "./BatchMutationBase";
 import type {
   BatchMutationInputInternal,
   UseBatchMutationHookOptions,
 } from "./types";
+import type { EntityConstructorAny } from "../entity/Entity";
 
 export class BatchUpdateMutation<
   TEntityConstructor extends EntityConstructorAny,

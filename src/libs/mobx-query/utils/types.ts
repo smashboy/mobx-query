@@ -1,4 +1,5 @@
-import type { EntityAny, EntityDataAny } from "../entity";
+import type { EntityAny } from "../entity/Entity";
+import type { EntityDataAny } from "../entity/types";
 
 export type InferEntity<T> = T extends { new (...args: any[]): infer E }
   ? E extends EntityAny

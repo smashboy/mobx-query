@@ -8,8 +8,6 @@ import {
   toJS,
 } from "mobx";
 import type { EntityData, EntityEvents, EntityId } from "./types";
-import { MQClientAccessor } from "../client";
-import { invalidateQueryByHash } from "../utils";
 import { EntityState } from "./constants";
 
 export type EntityConstructor<
@@ -40,7 +38,7 @@ export type EntityValueKeys<T> = {
 export abstract class Entity<
   TData = unknown,
   TEntityId extends EntityId = string,
-> extends MQClientAccessor {
+> {
   abstract id: TEntityId;
 
   abstract hydrate(data: TData): void;
@@ -221,12 +219,4 @@ export abstract class Entity<
   // ): this[K] | undefined {
   //   return this.initValuesSnapshot.get(field) as this[K] | undefined
   // }
-
-  invalidateRelatedQueries() {
-    const cache = this.queryClient.getQueryCache();
-
-    for (const hash of this.queryHashes) {
-      invalidateQueryByHash(hash, cache, () => this._removeQueryHashes([hash]));
-    }
-  }
 }
