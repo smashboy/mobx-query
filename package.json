@@ -3,6 +3,7 @@
   "version": "0.2.6",
   "type": "module",
   "author": "smashboy",
+  "repository": "https://github.com/smashboy/mobx-query",
   "private": false,
   "publishConfig": {
     "access": "public"
