@@ -8,7 +8,7 @@ import {
   toJS,
 } from "mobx";
 import type { EntityData, EntityEvents, EntityId } from "./types";
-import { MQClientAccessor } from "../MQClientAccessor";
+import { MQClientAccessor } from "../client";
 import { invalidateQueryByHash } from "../utils";
 import { EntityState } from "./constants";
 

@@ -1,4 +1,4 @@
-import { __MOBX_QUERY__ } from "../MQClient";
+import { __MOBX_QUERY__ } from "../client/MQClient";
 import {
   type EntityConstructorAny,
   type EntityAny,
@@ -7,7 +7,7 @@ import {
 import type { OptimisticMutationStrategyOptions } from "./types";
 import { action } from "mobx";
 import { invalidateQueryByHash } from "../utils";
-import { MQClientAccessor } from "../MQClientAccessor";
+import { MQClientAccessor } from "../client";
 import {
   OptimisticMutationErrorStrategy,
   OptimisticMutationInvalidationStrategy,

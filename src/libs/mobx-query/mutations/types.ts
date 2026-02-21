@@ -3,15 +3,13 @@ import type {
   MutationFunctionContext,
   UseMutationOptions,
 } from "@tanstack/react-query";
-import type { MQClientContextRegistered } from "../types";
+import type { MQClientContextRegistered } from "../client/types";
 import type { EntityAny, EntityConstructorAny } from "../entity";
-import * as MutationConstants from "./constants";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
-
-export type OptimisticMutationInvalidationStrategy =
-  (typeof MutationConstants.OptimisticMutationInvalidationStrategy)[keyof typeof MutationConstants.OptimisticMutationInvalidationStrategy];
-export type OptimisticMutationErrorStrategy =
-  (typeof MutationConstants.OptimisticMutationErrorStrategy)[keyof typeof MutationConstants.OptimisticMutationErrorStrategy];
+import type {
+  OptimisticMutationErrorStrategy,
+  OptimisticMutationInvalidationStrategy,
+} from "./constants";
 
 export type MutationFn<TInput> = (
   input: TInput,

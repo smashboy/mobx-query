@@ -28,6 +28,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: {
+        client: resolve(mobxQueryDir, "./client/index.js"),
         entity: resolve(mobxQueryDir, "./entity/index.js"),
         mutations: resolve(mobxQueryDir, "./mutations/index.js"),
         queries: resolve(mobxQueryDir, "./queries/index.js"),

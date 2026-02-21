@@ -1,18 +1,13 @@
-import type { EntityConstructorAny } from "./entity/Entity";
-import { EntityCollection } from "./entity/EntityCollection";
+import { type EntityConstructorAny, EntityCollection } from "../entity";
 import type { MQClientContextRegistered } from "./types";
-import type {
-  OptimisticMutationErrorStrategy as OptimisticMutationErrorStrategyType,
-  OptimisticMutationInvalidationStrategy as OptimisticMutationInvalidationStrategyType,
-} from "./mutations/types";
 import {
   OptimisticMutationErrorStrategy,
   OptimisticMutationInvalidationStrategy,
-} from "./mutations/constants";
+} from "../mutations";
 
 export interface MQClientOptions {
-  invalidationStrategy?: OptimisticMutationInvalidationStrategyType;
-  errorStrategy?: OptimisticMutationErrorStrategyType;
+  invalidationStrategy?: OptimisticMutationInvalidationStrategy;
+  errorStrategy?: OptimisticMutationErrorStrategy;
   invalidateOnError?: boolean;
 }
 
