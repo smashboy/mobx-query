@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
+import dts from "vite-plugin-dts";
 import observerPlugin from "mobx-react-observer/babel-plugin";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -24,17 +25,16 @@ export default defineConfig({
         ],
       },
     }),
+    dts({
+      entryRoot: "src/libs/mobx-query",
+      insertTypesEntry: true,
+      tsconfigPath: "./tsconfig.app.json",
+    }),
   ],
   build: {
     lib: {
-      entry: {
-        client: resolve(mobxQueryDir, "./client/index.js"),
-        entity: resolve(mobxQueryDir, "./entity/index.js"),
-        mutations: resolve(mobxQueryDir, "./mutations/index.js"),
-        queries: resolve(mobxQueryDir, "./queries/index.js"),
-        react: resolve(mobxQueryDir, "./react/index.js"),
-        utils: resolve(mobxQueryDir, "./utils/index.js"),
-      },
+      entry: resolve(mobxQueryDir, "./index.ts"),
+      formats: ["es"],
       name: "mobx-query",
     },
     rollupOptions: {
