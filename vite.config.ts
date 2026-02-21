@@ -1,6 +1,10 @@
 import { defineConfig } from "vite";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import observerPlugin from "mobx-react-observer/babel-plugin";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -19,4 +23,11 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    lib: {
+      entry: {
+        entity: resolve,
+      },
+    },
+  },
 });
