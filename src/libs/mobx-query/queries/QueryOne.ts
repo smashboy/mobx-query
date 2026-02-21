@@ -3,7 +3,7 @@ import {
   useQuery,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import type { EntityConstructorAny } from "../entity/Entity";
+import type { EntityConstructorAny } from "../entity";
 import type { UseQueryOneOptions } from "./types";
 import { QueryOneBase } from "./QueryOneBase";
 import { useDeferredValue } from "react";

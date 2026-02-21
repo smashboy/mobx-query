@@ -1,14 +1,17 @@
 import { __MOBX_QUERY__ } from "../MQClient";
-import type { EntityConstructorAny, EntityAny } from "../entity/Entity";
+import {
+  type EntityConstructorAny,
+  type EntityAny,
+  EntityState,
+} from "../entity";
 import type { OptimisticMutationStrategyOptions } from "./types";
 import { action } from "mobx";
-import { invalidateQueryByHash } from "../utils/invalidateQueryByHash";
+import { invalidateQueryByHash } from "../utils";
 import { MQClientAccessor } from "../MQClientAccessor";
 import {
   OptimisticMutationErrorStrategy,
   OptimisticMutationInvalidationStrategy,
 } from "./constants";
-import { EntityState } from "../entity/constants";
 
 export class OptimisticMutationStrategy extends MQClientAccessor {
   constructor(

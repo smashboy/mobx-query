@@ -1,9 +1,12 @@
 import type { DefaultError } from "@tanstack/react-query";
-import type { EntityAny, EntityConstructorAny } from "../entity/Entity";
-import { EntityCollection } from "../entity/EntityCollection";
-import type { EntityDataAny, EntityId } from "../entity/types";
-import { invalidateQueryByHash } from "../utils/invalidateQueryByHash";
-import type { InferEntityData } from "../utils/types";
+import type {
+  EntityAny,
+  EntityConstructorAny,
+  EntityCollection,
+  EntityId,
+  EntityDataAny,
+} from "../entity";
+import { type InferEntityData, invalidateQueryByHash } from "../utils";
 import { QueryBase } from "./QueryBase";
 import type { UseQueryManyOptions } from "./types";
 

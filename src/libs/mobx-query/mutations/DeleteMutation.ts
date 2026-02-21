@@ -3,7 +3,7 @@ import {
   type MutationFunctionContext,
   useMutation,
 } from "@tanstack/react-query";
-import type { EntityConstructorAny } from "../entity/Entity";
+import type { EntityConstructorAny } from "../entity";
 import type { UseEntityMutationHookOptions } from "./types";
 import { EntityMutationBase } from "./EntityMutationBase";
 import { action } from "mobx";

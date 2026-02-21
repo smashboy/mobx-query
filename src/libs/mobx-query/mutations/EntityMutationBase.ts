@@ -1,4 +1,4 @@
-import type { EntityConstructorAny, EntityAny } from "../entity/Entity";
+import type { EntityConstructorAny, EntityAny } from "../entity";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
 import type {
   EntityMutationCallbacks,

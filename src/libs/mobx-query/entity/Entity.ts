@@ -9,7 +9,7 @@ import {
 } from "mobx";
 import type { EntityData, EntityEvents, EntityId } from "./types";
 import { MQClientAccessor } from "../MQClientAccessor";
-import { invalidateQueryByHash } from "../utils/invalidateQueryByHash";
+import { invalidateQueryByHash } from "../utils";
 import { EntityState } from "./constants";
 
 export type EntityConstructor<

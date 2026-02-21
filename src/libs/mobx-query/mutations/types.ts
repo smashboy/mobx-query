@@ -4,7 +4,7 @@ import type {
   UseMutationOptions,
 } from "@tanstack/react-query";
 import type { MQClientContextRegistered } from "../types";
-import type { EntityAny, EntityConstructorAny } from "../entity/Entity";
+import type { EntityAny, EntityConstructorAny } from "../entity";
 import * as MutationConstants from "./constants";
 import { OptimisticMutationStrategy } from "./OptimisticMutationStrategy";
 
