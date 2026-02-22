@@ -1,35 +1,55 @@
 # mobx-query
 
-**Reactive server-state management for MobX — powered by TanStack Query.**
+**The reactive bridge between TanStack Query and MobX.**
 
-mobx-query bridges the gap between [MobX](https://mobx.js.org/) and [TanStack Query](https://tanstack.com/query) by introducing an **entity-based architecture** that turns your server data into observable, self-managing MobX classes. Instead of juggling raw query results and manual cache invalidation, you define **Entity** classes with observable properties, queries, and mutations — and mobx-query keeps everything in sync.
+Normalized entities, optimistic mutations, and dirty tracking — out of the box.
 
-## ✨ Highlights
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![NPM version](https://img.shields.io/npm/v/@mobx-query/core.svg)](https://www.npmjs.com/package/@mobx-query/core)
 
-- 🧩 **Entity-first design** — Model your server data as MobX observable classes with built-in identity tracking
-- 🔄 **Automatic normalization** — Entities are deduplicated and shared across queries via an internal `EntityManager`
-- ⚡ **Optimistic mutations** — `CreateMutation`, `UpdateMutation`, and `DeleteMutation` with built-in rollback strategies
-- 🪝 **React hooks included** — `useSuspenseQuery`, `useDeferredQuery`, and `useMutation` hooks that return hydrated MobX entities
-- 🪄 **useDeferredQuery** — Built-in support for React's `useDeferredValue` to prevent UI "flashing" during search/filtering
-- 🌐 **Custom context** — Register app-wide context (e.g. your database client) via global namespace augmentation
-- 🔍 **Dirty tracking** — Entities track field-level changes with automatic deep-clone snapshots and `reset()` support
+---
 
-## 🚀 Quick Start
+## 🧩 Why mobx-query?
 
-### 1. Install
+You love **MobX** for its fine-grained reactivity and class-based models. You love **TanStack Query** for its battle-tested server-state caching. But gluing them together is painful.
+
+**mobx-query** solves this by turning TanStack Query results into fully reactive MobX entities:
+
+- **One instance per entity** — Shared across all queries via automatic normalization.
+- **Built-in optimistic mutations** — Create, Update, and Delete with auto-rollback on error.
+- **Field-level dirty tracking** — Know exactly what changed for partial saves or "discard changes" prompts.
+- **Referential identity** — Entities keep their identity across refetches, preventing unnecessary UI re-renders.
+
+## 🚀 Installation
 
 ```bash
-npm install @mobx-query/core mobx mobx-react-lite @tanstack/react-query
+npm install @mobx-query/core @tanstack/react-query mobx mobx-react-lite
 ```
 
-### 2. Define an Entity
+### TypeScript Configuration
+
+mobx-query uses [TC39 decorators](https://github.com/tc39/proposal-decorators) (Stage 3). Ensure your `tsconfig.json` supports them:
+
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": false,
+    "useDefineForClassFields": true
+  }
+}
+```
+
+## ⚡ Quick Start
+
+### 1. Define an Entity
 
 ```ts
-import { Entity } from "@mobx-query/core";
-import { observable } from "mobx";
+import { Entity, UpdateMutation } from "@mobx-query/core";
+import { observable, action } from "mobx";
 
 export class Todo extends Entity<TodoData> {
-  id: string = "";
+  id: string = crypto.randomUUID();
+
   @observable accessor title: string = "";
   @observable accessor completed: boolean = false;
 
@@ -38,10 +58,26 @@ export class Todo extends Entity<TodoData> {
     this.title = data.title;
     this.completed = data.completed;
   }
+
+  readonly updateMutation = new UpdateMutation({
+    entity: Todo,
+    instance: this,
+    mutationFn: async () => {
+      await fetch(`/api/todos/${this.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ completed: this.completed }),
+      });
+    },
+  });
+
+  @action toggle() {
+    this.completed = !this.completed;
+    this.updateMutation.mutate(); // Checks isDirty internally before calling API
+  }
 }
 ```
 
-### 3. Create a Store with Queries
+### 2. Create a Store
 
 ```ts
 import { QueryMany } from "@mobx-query/core";
@@ -59,28 +95,11 @@ export class TodosStore {
 }
 ```
 
-### 4. Initialize the Client
-
-```ts
-import { MQClient } from "@mobx-query/coret";
-import { QueryClient } from "@tanstack/react-query";
-import { Todo } from "./todo.entity";
-import { TodosStore } from "./todos.store";
-
-const queryClient = new QueryClient();
-
-const client = new MQClient<{ todos: TodosStore }>({
-  context: { queryClient },
-  entities: [Todo],
-  rootStore: () => ({ todos: new TodosStore() }),
-});
-```
-
-### 5. Use in React
+### 3. Initialize & Use in React
 
 ```tsx
 import { observer } from "mobx-react-lite";
-import { useMQ } from "./mqclient";
+import { useMQ } from "./mq-setup";
 
 const TodoList = observer(() => {
   const { rootStore } = useMQ();
@@ -89,7 +108,9 @@ const TodoList = observer(() => {
   return (
     <ul>
       {todos.map((todo) => (
-        <li key={todo.id}>{todo.title}</li>
+        <li key={todo.id} onClick={() => todo.toggle()}>
+          {todo.title} {todo.completed ? "✅" : "❌"}
+        </li>
       ))}
     </ul>
   );
@@ -98,11 +119,7 @@ const TodoList = observer(() => {
 
 ## 📖 Documentation
 
-Full documentation is available at **[mobx-query.dev](https://mobx-query.dev)** _(coming soon)_.
-
-## ⚠️ Disclaimer
-
-> **This library is in early development.** The API surface is subject to breaking changes between versions until a stable `1.0` release. Use in production at your own discretion. Feedback and contributions are welcome!
+Full documentation is available at **[mobx-query.dev](https://mobx-query.dev)**.
 
 ## 📄 License
 
