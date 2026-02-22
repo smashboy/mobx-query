@@ -1,6 +1,6 @@
 {
   "name": "@mobx-query/core",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "type": "module",
   "author": "smashboy",
   "repository": "https://github.com/smashboy/mobx-query",
