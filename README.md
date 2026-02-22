@@ -119,7 +119,7 @@ const TodoList = observer(() => {
 
 ## 📖 Documentation
 
-Full documentation is available at **[mobx-query.dev](https://mobx-query.dev)**.
+Full documentation is available at **[mobx-query-docs.vercel.app](https://mobx-query-docs.vercel.app/)**.
 
 ## 📄 License
 
