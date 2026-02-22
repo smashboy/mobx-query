@@ -19,24 +19,24 @@ mobx-query bridges the gap between [MobX](https://mobx.js.org/) and [TanStack Qu
 ### 1. Install
 
 ```bash
-npm install mobx-query mobx mobx-react-lite @tanstack/react-query
+npm install @mobx-query/core mobx mobx-react-lite @tanstack/react-query
 ```
 
 ### 2. Define an Entity
 
 ```ts
-import { Entity } from 'mobx-query/entity/Entity'
-import { observable } from 'mobx'
+import { Entity } from "@mobx-query/core";
+import { observable } from "mobx";
 
 export class Todo extends Entity<TodoData> {
-  id: string = ''
-  @observable accessor title: string = ''
-  @observable accessor completed: boolean = false
+  id: string = "";
+  @observable accessor title: string = "";
+  @observable accessor completed: boolean = false;
 
   hydrate(data: TodoData) {
-    this.id = data.id
-    this.title = data.title
-    this.completed = data.completed
+    this.id = data.id;
+    this.title = data.title;
+    this.completed = data.completed;
   }
 }
 ```
@@ -44,47 +44,47 @@ export class Todo extends Entity<TodoData> {
 ### 3. Create a Store with Queries
 
 ```ts
-import { QueryMany } from 'mobx-query/queries/QueryMany'
-import { Todo } from './todo.entity'
+import { QueryMany } from "@mobx-query/core";
+import { Todo } from "./todo.entity";
 
 export class TodosStore {
   readonly todosQuery = new QueryMany({
     entity: Todo,
-    queryKey: () => ['todos'],
+    queryKey: () => ["todos"],
     queryFn: async () => {
-      const res = await fetch('/api/todos')
-      return res.json()
+      const res = await fetch("/api/todos");
+      return res.json();
     },
-  })
+  });
 }
 ```
 
 ### 4. Initialize the Client
 
 ```ts
-import { MQClient } from 'mobx-query/MQClient'
-import { QueryClient } from '@tanstack/react-query'
-import { Todo } from './todo.entity'
-import { TodosStore } from './todos.store'
+import { MQClient } from "@mobx-query/coret";
+import { QueryClient } from "@tanstack/react-query";
+import { Todo } from "./todo.entity";
+import { TodosStore } from "./todos.store";
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient();
 
 const client = new MQClient<{ todos: TodosStore }>({
   context: { queryClient },
   entities: [Todo],
   rootStore: () => ({ todos: new TodosStore() }),
-})
+});
 ```
 
 ### 5. Use in React
 
 ```tsx
-import { observer } from 'mobx-react-lite'
-import { useMQ } from './mqclient'
+import { observer } from "mobx-react-lite";
+import { useMQ } from "./mqclient";
 
 const TodoList = observer(() => {
-  const { rootStore } = useMQ()
-  const todos = rootStore.todos.todosQuery.useSuspenseQuery()
+  const { rootStore } = useMQ();
+  const todos = rootStore.todos.todosQuery.useSuspenseQuery();
 
   return (
     <ul>
@@ -92,8 +92,8 @@ const TodoList = observer(() => {
         <li key={todo.id}>{todo.title}</li>
       ))}
     </ul>
-  )
-})
+  );
+});
 ```
 
 ## 📖 Documentation
