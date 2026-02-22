@@ -1,98 +1,109 @@
-# DISCLAIMER: This project is still in development and I don't know when I'm going to finish it, but still feel free to check it out.
-
 # mobx-query
 
-**Combine the best of react-query and mobx** — mobx-query provides a thin integration layer that uses React Query for fetching/invalidations and MobX for storing and mutating observable entities. It supports optimistic mutations with automatic rollbacks on error and automatic invalidation of dependent queries on success.
+**Reactive server-state management for MobX — powered by TanStack Query.**
 
-# Features
+mobx-query bridges the gap between [MobX](https://mobx.js.org/) and [TanStack Query](https://tanstack.com/query) by introducing an **entity-based architecture** that turns your server data into observable, self-managing MobX classes. Instead of juggling raw query results and manual cache invalidation, you define **Entity** classes with observable properties, queries, and mutations — and mobx-query keeps everything in sync.
 
-- Normalize query responses into a single observable Map per collection.
-  
-- Hooks make it easy to work with data. Use [useSuspenseQueryEntitiesList](#sample-section) and [useSuspenseQueryEntity](#sample-section) to fetch and hydrate entities. For mutations, [useCreateMutation](#sample-section) and [useDeleteMutation](#sample-section) handle collection-level changes with optimistic updates and invalidations, while [useUpdateMutation](#sample-section) lets you update a single entity directly.
-  
-- Optimistic updates with automatic query invalidation on successful mutations and rollbacks on error.
-  
-- Fine-grained, mutable entities powered by MobX (observable fields & actions).
+## ✨ Highlights
 
-# Quick example
+- 🧩 **Entity-first design** — Model your server data as MobX observable classes with built-in identity tracking
+- 🔄 **Automatic normalization** — Entities are deduplicated and shared across queries via an internal `EntityManager`
+- ⚡ **Optimistic mutations** — `CreateMutation`, `UpdateMutation`, and `DeleteMutation` with built-in rollback strategies
+- 🪝 **React hooks included** — `useSuspenseQuery`, `useDeferredQuery`, and `useMutation` hooks that return hydrated MobX entities
+- 🪄 **useDeferredQuery** — Built-in support for React's `useDeferredValue` to prevent UI "flashing" during search/filtering
+- 🌐 **Custom context** — Register app-wide context (e.g. your database client) via global namespace augmentation
+- 🔍 **Dirty tracking** — Entities track field-level changes with automatic deep-clone snapshots and `reset()` support
 
-Create the observable entity and wire it into a collection.
+## 🚀 Quick Start
 
-```ts
-// Your observable entity 
-class Todo {
-  id: number;
-  userId: number;
-  @observable accessor title: string;
-  @observable accessor isCompleted: boolean;
+### 1. Install
 
-  constructor(data: TodoDTO) {
-    this.id = data.id;
-    this.userId = data.userId;
-    this.title = data.title;
-    this.isCompleted = data.completed;
-  }
-}
-
-// Collection for a Todo entity
-class TodosCollection extends EntityCollection<TodoDTO, Todo> {
-  constructor() {
-    super("todos", queryClient, {
-      getEntityId: (todo) => todo.id,
-      hydrate: (todo) => new Todo(todo), // wrap data from queries into observable states
-    });
-  }
-
-  useTodosByUserIdQuery(userId: number) {
-    return this.useSuspenseQueryEntitiesList(getTodosByUserId, userId);
-  }
-
-  useDeleteTodoMutation(entity: TodoHydrated) {
-    return this.useDeleteMutation(entity, (entity) => deleteTodo(entity.id));
-  }
-}
-
-type TodoHydrated = EntityHydrated<Todo>;
-
-const todosCollection = new TodosCollection();
+```bash
+npm install mobx-query mobx mobx-react-lite @tanstack/react-query
 ```
 
-Use hook from a collection to fetch and retrieve obserbable data
+### 2. Define an Entity
 
 ```ts
-const TodosList: React.FC<{ userId: number }> = () => {
-  const todos = todosCollection.useTodosByUserIdQuery(userId);
+import { Entity } from 'mobx-query/entity/Entity'
+import { observable } from 'mobx'
 
-   return <List items={todos} />;
-};
+export class Todo extends Entity<TodoData> {
+  id: string = ''
+  @observable accessor title: string = ''
+  @observable accessor completed: boolean = false
+
+  hydrate(data: TodoData) {
+    this.id = data.id
+    this.title = data.title
+    this.completed = data.completed
+  }
+}
 ```
 
-Mutate entity with automatic queries invalidation on mutation success and rollback on error
+### 3. Create a Store with Queries
 
 ```ts
-const TodoListItem: React.FC<{ todo: TodoHydrated }> = ({ todo }) => {
-  const deleteTodo = todosCollection.useDeleteTodoMutation(todo);
+import { QueryMany } from 'mobx-query/queries/QueryMany'
+import { Todo } from './todo.entity'
 
-  const update = todo.useUpdateMutation(entity => updateTodo(entity));
+export class TodosStore {
+  readonly todosQuery = new QueryMany({
+    entity: Todo,
+    queryKey: () => ['todos'],
+    queryFn: async () => {
+      const res = await fetch('/api/todos')
+      return res.json()
+    },
+  })
+}
+```
 
-  const handleEditTitle = () => {
-    const value = prompt("Update title", todo.title);
+### 4. Initialize the Client
 
-    if (value) {
-      todo.title = value;
-      update();
-    }
-  };
+```ts
+import { MQClient } from 'mobx-query/MQClient'
+import { QueryClient } from '@tanstack/react-query'
+import { Todo } from './todo.entity'
+import { TodosStore } from './todos.store'
+
+const queryClient = new QueryClient()
+
+const client = new MQClient<{ todos: TodosStore }>({
+  context: { queryClient },
+  entities: [Todo],
+  rootStore: () => ({ todos: new TodosStore() }),
+})
+```
+
+### 5. Use in React
+
+```tsx
+import { observer } from 'mobx-react-lite'
+import { useMQ } from './mqclient'
+
+const TodoList = observer(() => {
+  const { rootStore } = useMQ()
+  const todos = rootStore.todos.todosQuery.useSuspenseQuery()
 
   return (
-    <div>
-      {todo.title}
-      <button onClick={handleEditTitle}>
-        Edit
-      </button>
-      <button onClick={deleteTodo}>
-        Delete
-      </button>
-    </div>
-  );
-};
+    <ul>
+      {todos.map((todo) => (
+        <li key={todo.id}>{todo.title}</li>
+      ))}
+    </ul>
+  )
+})
+```
+
+## 📖 Documentation
+
+Full documentation is available at **[mobx-query.dev](https://mobx-query.dev)** _(coming soon)_.
+
+## ⚠️ Disclaimer
+
+> **This library is in early development.** The API surface is subject to breaking changes between versions until a stable `1.0` release. Use in production at your own discretion. Feedback and contributions are welcome!
+
+## 📄 License
+
+MIT
